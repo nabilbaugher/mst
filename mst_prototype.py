@@ -24,6 +24,39 @@ def memoize(function):
 # Map Builder
 # ----------------------
 
+"""
+A short summary of the various functions in this file:
+    map_builder(nrows, ncols, black, path, start)
+        Uses a description of a map, and turns it into a "grid".
+    
+    raycaster(map_, pos) 
+        Determines which tiles our player can see from their current position.
+    
+    new_observations(map_, pos) 
+        Finds which tiles can the player see, which haven't been seen before
+        *Uses raycaster
+        
+    update_map(map_, old_pos, new_pos)
+        Updates our grid map to reflect the player moving: updates black (unseen) tiles to path (seen)
+        *Uses new_observations
+        
+
+Overall representation:
+    Our map is a tuple of tuples, where each tile is represented by a number:
+        -5 is the start tile
+            Where player starts
+            
+        -6 is the path tile
+            Where player can walk, and is known by player
+            
+        -0 is the black tile
+            Unseen by player, converts into 6 when seen
+            
+        -3 is the wall tile
+            Cannot be walked on by player; blocks their vision from seeing other tiles
+    
+"""
+
 def map_builder(nrows, ncols, black, path, start):
     """
     This function turns a description of a map into its representation: a tuple of tuples, representing a grid.
@@ -35,7 +68,7 @@ def map_builder(nrows, ncols, black, path, start):
     ncols : int. Number of columns
     
     black : list of tuples (int, int)
-        ???
+        The tiles our player has not viewed yet.
     path :  list of tuples (int, int)
         The tiles which are part of our path.
     start : tuple (int, int). 
@@ -51,7 +84,7 @@ def map_builder(nrows, ncols, black, path, start):
     return tuple(
                 tuple(     5 if (i ,j) == start  #Start tiles
                       else 6 if (i ,j) in path   #Path tiles
-                      else 0 if (i ,j) in black  #???
+                      else 0 if (i ,j) in black  #Unseen tiles
                       else 3                     #Wall tiles (?)
                       for j in range(ncols)
                      )
@@ -72,6 +105,7 @@ def raycaster(map_, pos):
     map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
            -tuple of tuples    has length = nrows, 
            -each tuple of ints has length = ncols.
+           
     pos : tuple (int,int)
         The current position of our player on the map.
 
@@ -198,6 +232,7 @@ def new_observations(map_, pos):
     map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
            -tuple of tuples    has length = nrows, 
            -each tuple of ints has length = ncols.
+           
     pos : tuple (int,int)
         The current position of our player on the map.
 
@@ -223,23 +258,74 @@ def new_observations(map_, pos):
 
 
 def update_map(map_, old_pos, new_pos):
+    """
+    
 
-    observations = new_observations(map_, new_pos)
+    Parameters
+    ----------
+    map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
+           -tuple of tuples    has length = nrows, 
+           -each tuple of ints has length = ncols.
+           
+    old_pos : tuple (int,int) - previous position on map.
+    new_pos : tuple (int,int) - current position on map.
 
-    map_updated = [[6 if (r ,c) in observations else map_[r][c]
+
+    Returns
+    -------
+    map_updated: tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
+           -tuple of tuples    has length = nrows, 
+           -each tuple of ints has length = ncols.
+           
+        Map has been modified to account for the player having moved, 
+        and the observations that come as a result.
+
+    """
+
+    observations = new_observations(map_, new_pos) #Get observations
+
+    #Update map to reflect observations
+    map_updated = [ 
+                    [6 if (r ,c) in observations #A visible tile is a "path" tile!
+                     else map_[r][c] #Else, no change
                     for c in range(len(map_[0]))]
-                   for r in range(len(map_))]
+                    for r in range(len(map_))]
 
-    map_updated[old_pos[0]][old_pos[1]] = 6
+    map_updated[old_pos[0]][old_pos[1]] = 6 #Our old position is now a path tile
 
-    map_updated = tuple(tuple(row) for row in map_updated)
+    map_updated = tuple(tuple(row) for row in map_updated) #Convert to tuple of tuples
 
     return map_updated
 
 
-def possible_paths(map, pos):
+def possible_paths(map_, pos):
+    """
+    Uses agenda-style breadth-first search to find every possible path through our map.
 
-    nrows, ncols = len(map[0]), len(map)
+    Parameters
+    ----------
+    map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
+           -tuple of tuples    has length = nrows, 
+           -each tuple of ints has length = ncols.
+           
+    pos : tuple (int,int)
+        The current position of our player on the map.
+
+    Returns
+    -------
+    paths : list of lists of tuples (int, int)
+            -"List of lists" contains different possible paths
+            -"List of tuples" is an array of positions along our path.
+            
+            For each path: the nth element of the list is the nth position on our path.
+            
+        Returns a list of all possible path we could take through our map.
+        
+
+    """
+
+    nrows, ncols = len(map_[0]), len(map_)
+    
     agenda = [ [pos] ]
     paths = []
 
@@ -253,11 +339,11 @@ def possible_paths(map, pos):
             r, c = max(min(r_ +rr, nrows -1), 0), max(min(c_ +cc, ncols -1), 0)
 
             # ignore if neigh is a wall
-            if map[r][c] == 3 or (r ,c) in path:
+            if map_[r][c] == 3 or (r ,c) in path:
                 continue
 
             # if new observation is made, then we have a path
-            observations = new_observations(map, (r ,c))
+            observations = new_observations(map_, (r ,c))
 
             if observations:
                 paths.append((path + [(r ,c)], observations))
