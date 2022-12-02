@@ -25,8 +25,38 @@ def memoize(function):
 # ----------------------
 
 def map_builder(nrows, ncols, black, path, start):
+    """
+    This function turns a description of a map into its representation: a tuple of tuples, representing a grid.
+    Each position on this grid is a "tile".
+    
+    Parameters
+    ----------
+    nrows : int. Number of rows
+    ncols : int. Number of columns
+    
+    black : list of tuples (int, int)
+        ???
+    path :  list of tuples (int, int)
+        The tiles which are part of our path.
+    start : tuple (int, int). 
+        Our starting position on the map.
 
-    return tuple(tuple(5 if (i ,j )==start else 6 if (i ,j) in path else 0 if (i ,j) in black else 3 for j in range(ncols)) for i in range(nrows))
+    Returns
+    -------
+    tuple of tuples
+        A representation of our map, where different values represent different tile types.
+
+    """
+
+    return tuple(
+                tuple(     5 if (i ,j) == start  #Start tiles
+                      else 6 if (i ,j) in path   #Path tiles
+                      else 0 if (i ,j) in black  #???
+                      else 3                     #Wall tiles (?)
+                      for j in range(ncols)
+                     )
+                for i in range(nrows)
+                )
 
 
 # ----------------------
@@ -34,56 +64,119 @@ def map_builder(nrows, ncols, black, path, start):
 # ----------------------
 
 def raycaster(map_, pos):
+    """
+    Based on our map and our current position, this function tells us which map tiles our player can see.
+    
+    Parameters
+    ----------
+    map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
+           -tuple of tuples    has length = nrows, 
+           -each tuple of ints has length = ncols.
+    pos : tuple (int,int)
+        The current position of our player on the map.
 
-    (r, c), nrows, ncols, observed = pos, len(map_), len(map_[0]), set()
+    Returns
+    -------
+    observed : set of tuples (int, int)
+        Set of all tiles currently visible to the player.
 
-    # 1st quadrant
-    nearest_right_wall = ncols
-    for r_ in range(r, -1, -1):
+    """
 
-        row_ = map_[r_]
-        right = [c_ for c_ in range(c, min(nearest_right_wall, row_.index(3, c)))]
+    (r, c)  = pos #Coords of player
+    nrows, ncols = len(map_), len(map_[0]) #Shape of grid
+    observed = set() #Tiles our player can see
+    
+    
+    
+    ###Our approach: start from our position (r,c). 
+    ###Gradually move further away, check what we can see: walls block our vision.
+    
+    ##Break problem down by quadrant
+    
+    # 1st quadrant: +x, +y
+    
+    nearest_right_wall = ncols #Can't see past map
+    
+    #Limit to top half: [r, r-1, r-2, ..., 0]
+    for r_ in range(r, -1, -1): 
+
+        row_ = map_[r_] #Current row
+        
+        #Wall stops our player from seeing past it
+        wall = min(nearest_right_wall, #Previous wall
+                   row_.index(3, c)) #This row's closest wall: 3 is a wall
+        
+        #Both walls block: whichever wall is closer (min), will block more.
+        
+        #Limit to right half
+        right = [c_ for c_ in range(c, wall )] #All of the points we can see: between our position and the wall
         observed.update([(r_, c_) for c_ in right])
 
-        if not right:
+        if not right: #If nothing new is seen, then walls are completely blocking our view.
             break
 
-        nearest_right_wall = right[-1 ] +1
+        nearest_right_wall = right[-1 ] +1 #Closest wall carries over as we move further away: still blocks
 
-    # 2nd quadrant
+    # 2nd quadrant: -x, +y
+    
+    ##Getting left half by flipping map, and getting next "right" half
     nearest_left_wall = ncols
-    for r_ in range(r, -1, -1):
+    
+    for r_ in range(r, -1, -1): #Top half
 
-        row_ = map_[r_][::-1]
-        print(ncols-c-1)
-        left = [c_ for c_ in range(ncols-c, min(nearest_left_wall, row_.index(3, ncols-c-1)))]
-        observed.update([(r_, ncols-c_-1) for c_ in left])
+        row_ = map_[r_][::-1] #Flip around our map: equivalent to x --> -x
+        
+        flipped_c = ncols - c #Player column in flipped map
+        
+        #Find closest wall to block
+        wall = min(nearest_left_wall, 
+                   row_.index(3, flipped_c-1)) 
+        
+        #Why flipped_c-1? Because flipped_c column is already handled by quadrant 1
+        
+        left = [c_ for c_ in range(flipped_c, wall)] #Visible tiles
+        
+        #n_col-c_ un-flips our coords
+        observed.update([(r_, ncols-c_-1) for c_ in left]) 
 
-        if not left:
+        if not left: #Remaining squares blocked
             break
 
-        nearest_left_wall = left[-1] + 1
+        nearest_left_wall = left[-1] + 1 #Remember wall
 
-    # 3rd quadrant
+    # 3rd quadrant: -x, -y
     nearest_left_wall = ncols
-    for r_ in range(r, nrows):
+    
+    for r_ in range(r, nrows): #Bottom half
 
-        row_ = map_[r_][::-1]
+        row_ = map_[r_][::-1] #Flip map: x--> -x
+        
+        flipped_c = ncols - c
+        
+        wall = min(nearest_left_wall, 
+                   row_.index(3, flipped_c -1))
 
-        left = [c_ for c_ in range(ncols -c, min(nearest_left_wall, row_.index(3, ncols - c -1)))]
+        left = [c_ for c_ in range(flipped_c, wall)]
+        
+        #Unflip coords
         observed.update([(r_, ncols -c_ -1) for c_ in left])
 
         if not left:
             break
 
-        nearest_left_wall = left[-1] + 1
+        nearest_left_wall = left[-1] + 1 
 
-    # 4th quadrant
+    # 4th quadrant: +x, -y
     nearest_right_wall = ncols
-    for r_ in range(r, nrows):
+    
+    for r_ in range(r, nrows): #Bottom half
 
-        row_ = map_[r_] # 4th quadrant
-        right = [c_ for c_ in range(c, min(nearest_right_wall, row_.index(3, c)))]
+        row_ = map_[r_] 
+        
+        wall = min(nearest_right_wall, 
+                   row_.index(3, c))
+        
+        right = [c_ for c_ in range(c, wall)]
         observed.update([(r_, c_) for c_ in right])
 
         if not right:
@@ -91,22 +184,42 @@ def raycaster(map_, pos):
 
         nearest_right_wall = right[-1 ] +1
 
+    #Result of all four quadrants
     return observed
 
 
 def new_observations(map_, pos):
+    """
+    After taking a step, find which tiles are newly revealed to the player,
+    as opposed to those they could already see.
 
-    observed = raycaster(map_, pos)
-    out = set()
+    Parameters
+    ----------
+    map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
+           -tuple of tuples    has length = nrows, 
+           -each tuple of ints has length = ncols.
+    pos : tuple (int,int)
+        The current position of our player on the map.
+
+    Returns
+    -------
+    new_observations : set of tuples (int, int)
+        All tiles the player can see from their current position.
+
+    """
+
+    observed = raycaster(map_, pos) #What our player can see now
+    new_observations = set()
 
     for r ,c in observed:
 
-        if map_[r][c] != 0:
+        #0 represents "already seen by player"
+        if map_[r][c] != 0: #If already seen, don't add
             continue
 
-        out.add((r ,c))
+        new_observations.add((r ,c)) #If not seen, add to new 
 
-    return out
+    return new_observations
 
 
 def update_map(map_, old_pos, new_pos):
@@ -429,124 +542,124 @@ def visualize_decision_and_nodevalues(maze, pid):
 
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
-    import pprint
-    pp = pprint.PrettyPrinter(compact=False)
+#     import pprint
+#     pp = pprint.PrettyPrinter(compact=False)
 
-    # map 1
-    map_1 = ((3, 3, 3, 3, 3, 3, 3, 3, 3),
-             (3, 3, 3, 3, 0, 3, 0, 3, 3),
-             (3, 3, 3, 3, 0, 3, 0, 3, 3),
-             (3, 5, 6, 6, 6, 6, 6, 6, 3),
-             (3, 6, 3, 3, 3, 3, 3, 6, 3),
-             (3, 6, 6, 6, 6, 6, 6, 6, 3),
-             (3, 3, 0, 0, 3, 3, 3, 3, 3),
-             (3, 3, 3, 3, 3, 3, 3, 3, 3),)
+#     # map 1
+#     map_1 = ((3, 3, 3, 3, 3, 3, 3, 3, 3),
+#              (3, 3, 3, 3, 0, 3, 0, 3, 3),
+#              (3, 3, 3, 3, 0, 3, 0, 3, 3),
+#              (3, 5, 6, 6, 6, 6, 6, 6, 3),
+#              (3, 6, 3, 3, 3, 3, 3, 6, 3),
+#              (3, 6, 6, 6, 6, 6, 6, 6, 3),
+#              (3, 3, 0, 0, 3, 3, 3, 3, 3),
+#              (3, 3, 3, 3, 3, 3, 3, 3, 3),)
 
-    ncols, nrows = 13, 9
+#     ncols, nrows = 13, 9
 
-    # map 2
-    ncols, nrows = 13, 9
-    start = (5 ,4)
+#     # map 2
+#     ncols, nrows = 13, 9
+#     start = (5 ,4)
 
-    path = {(3 ,1), (3 ,2), (3 ,3), (3 ,4), (3 ,5), (3 ,6), (3 ,7), (3 ,8),
-            (5 ,1), (5 ,2), (5 ,3), (5 ,4), (5 ,5), (5 ,6), (5 ,7), (5 ,8),
-            (4 ,1), (4 ,8)}
+#     path = {(3 ,1), (3 ,2), (3 ,3), (3 ,4), (3 ,5), (3 ,6), (3 ,7), (3 ,8),
+#             (5 ,1), (5 ,2), (5 ,3), (5 ,4), (5 ,5), (5 ,6), (5 ,7), (5 ,8),
+#             (4 ,1), (4 ,8)}
 
-    black = {(6 ,2), (7 ,2),
-             (6 ,7), (7 ,7),
-             (2 ,4), (1 ,4), (1 ,5), (1 ,6),
-             (4 ,9), (4 ,10), (4 ,11)}
+#     black = {(6 ,2), (7 ,2),
+#              (6 ,7), (7 ,7),
+#              (2 ,4), (1 ,4), (1 ,5), (1 ,6),
+#              (4 ,9), (4 ,10), (4 ,11)}
 
-    map_2 = map_builder(nrows, ncols, black, path, start)
+#     map_2 = map_builder(nrows, ncols, black, path, start)
 
-    # map 3
-    # ncols, nrows = 12, 8
-    # start = (1,3)
+#     # map 3
+#     # ncols, nrows = 12, 8
+#     # start = (1,3)
 
-    # path = {(1,1), (1,2), (1,3), (1,4), (1,5), (1,6), (1,7), (1,8), (1,9), (1,10),
-    #         (2,3), (3,3), (4,3), (5,3), (6,3)}
+#     # path = {(1,1), (1,2), (1,3), (1,4), (1,5), (1,6), (1,7), (1,8), (1,9), (1,10),
+#     #         (2,3), (3,3), (4,3), (5,3), (6,3)}
 
-    # black = {(2,1), (3,1),
-    #          (5,4), (5,5), (5,6), (6,4), (6,5), (6,6),
-    #          (2,9), (2,10), (3,9), (3,10), (4,9), (4,10), (5,9), (5,10), (6,9)}
+#     # black = {(2,1), (3,1),
+#     #          (5,4), (5,5), (5,6), (6,4), (6,5), (6,6),
+#     #          (2,9), (2,10), (3,9), (3,10), (4,9), (4,10), (5,9), (5,10), (6,9)}
 
-    # map_3 = map_builder(nrows, ncols, black, path, start)
+#     # map_3 = map_builder(nrows, ncols, black, path, start)
 
-    # map 4
-    # ncols, nrows = 12, 14
-    # start = (7,3)
+#     # map 4
+#     # ncols, nrows = 12, 14
+#     # start = (7,3)
 
-    # path = {(6,3), (5,3), (4,3), (3,3), (3,4), (3,5), (3,6), (3,6), (3,7), (3,8), (3,9), (3,10),
-    #         (7,1), (7,2), (7,3), (7,4), (7,5), (7,6), (7,7), (7,8), (7,9), (7,10),
-    #         (8,3), (9,3), (10,3), (11,3)}
+#     # path = {(6,3), (5,3), (4,3), (3,3), (3,4), (3,5), (3,6), (3,6), (3,7), (3,8), (3,9), (3,10),
+#     #         (7,1), (7,2), (7,3), (7,4), (7,5), (7,6), (7,7), (7,8), (7,9), (7,10),
+#     #         (8,3), (9,3), (10,3), (11,3)}
 
-    # black = {(1,7), (1,8), (1,9), (1,10), (2,7), (2,8), (2,9), (2,10), (4,7), (4,8), (4,9), (4,10), (5,7), (5,8), (5,9), (5,10),
-    #          (8,1), (9,1),
-    #          (11,4), (11,5), (11,6), (11,7),
-    #          (8,9), (8,10), (9,9), (9,10), (10,9), (10,10), (11,9), (11,10)}
+#     # black = {(1,7), (1,8), (1,9), (1,10), (2,7), (2,8), (2,9), (2,10), (4,7), (4,8), (4,9), (4,10), (5,7), (5,8), (5,9), (5,10),
+#     #          (8,1), (9,1),
+#     #          (11,4), (11,5), (11,6), (11,7),
+#     #          (8,9), (8,10), (9,9), (9,10), (10,9), (10,10), (11,9), (11,10)}
 
-    # map_4 = map_builder(nrows, ncols, black, path, start)
+#     # map_4 = map_builder(nrows, ncols, black, path, start)
 
-    # map 5
-    # ncols, nrows = 13, 5
-    # start = (1,8)
+#     # map 5
+#     # ncols, nrows = 13, 5
+#     # start = (1,8)
 
-    # path = {(1,1), (1,2), (1,3), (1,4), (1,5), (1,6), (1,7), (1,8), (1,9), (1,10), (1,11)}
+#     # path = {(1,1), (1,2), (1,3), (1,4), (1,5), (1,6), (1,7), (1,8), (1,9), (1,10), (1,11)}
 
-    # black = {(2,1), (2,2), (2,3), (3,1), (3,2), (3,3),
-    #          (2,11), (3,11)}
+#     # black = {(2,1), (2,2), (2,3), (3,1), (3,2), (3,3),
+#     #          (2,11), (3,11)}
 
-    # map_5 = map_builder(nrows, ncols, black, path, start)
+#     # map_5 = map_builder(nrows, ncols, black, path, start)
 
-    # map 6
-    # ncols, nrows = 14, 11
-    # start = (6,1)
+#     # map 6
+#     # ncols, nrows = 14, 11
+#     # start = (6,1)
 
-    # path = {(6,1), (6,2), (6,3), (6,4), (6,5), (6,6), (6,7), (6,8), (6,9), (6,10), (6,11), (6,12),
-    #         (7,1), (8,1), (5,3), (4,3), (3,3), (6,5), (7,5), (8,5), (9,5),
-    #         (6,7), (5,7), (4,7), (3,7), (2,7), (1,7)}
+#     # path = {(6,1), (6,2), (6,3), (6,4), (6,5), (6,6), (6,7), (6,8), (6,9), (6,10), (6,11), (6,12),
+#     #         (7,1), (8,1), (5,3), (4,3), (3,3), (6,5), (7,5), (8,5), (9,5),
+#     #         (6,7), (5,7), (4,7), (3,7), (2,7), (1,7)}
 
-    # black = {(8,2), (8,3), (4,4), (4,5), (3,4), (3,5), (8,6), (8,7), (8,8), (8,9), (9,6), (9,7), (9,8), (9,9),
-    #          (1,8), (1,9), (1,10), (1,11), (2,8), (2,9), (2,10), (2,11),
-    #          (3,8), (3,9), (3,10), (3,11), (4,8), (4,9), (4,10), (4,11),}
+#     # black = {(8,2), (8,3), (4,4), (4,5), (3,4), (3,5), (8,6), (8,7), (8,8), (8,9), (9,6), (9,7), (9,8), (9,9),
+#     #          (1,8), (1,9), (1,10), (1,11), (2,8), (2,9), (2,10), (2,11),
+#     #          (3,8), (3,9), (3,10), (3,11), (4,8), (4,9), (4,10), (4,11),}
 
-    # map_6 = map_builder(nrows, ncols, black, path, start)
+#     # map_6 = map_builder(nrows, ncols, black, path, start)
 
-    # map 7
-    # ncols, nrows = 14, 11
-    # start = (6,1)
+#     # map 7
+#     # ncols, nrows = 14, 11
+#     # start = (6,1)
 
-    # path = {(6,1), (6,2), (6,3), (6,4), (6,5), (6,6), (6,7), (6,8), (6,9), (6,10), (6,11), (6,12),
-    #         (7,1), (8,1), (5,3), (4,3), (3,3), (6,5), (7,5), (8,5), (9,5),
-    #         (6,7), (5,7), (4,7), (3,7), (2,7), (1,7)}
+#     # path = {(6,1), (6,2), (6,3), (6,4), (6,5), (6,6), (6,7), (6,8), (6,9), (6,10), (6,11), (6,12),
+#     #         (7,1), (8,1), (5,3), (4,3), (3,3), (6,5), (7,5), (8,5), (9,5),
+#     #         (6,7), (5,7), (4,7), (3,7), (2,7), (1,7)}
 
-    # black = {(8,2), (8,3), (4,4), (4,5), (3,4), (3,5), (8,6), (8,7), (8,8), (9,6), (9,7), (9,8),
-    #          (3,8), (3,9), (3,10), (3,11), (4,8), (4,9), (4,10), (4,11),}
+#     # black = {(8,2), (8,3), (4,4), (4,5), (3,4), (3,5), (8,6), (8,7), (8,8), (9,6), (9,7), (9,8),
+#     #          (3,8), (3,9), (3,10), (3,11), (4,8), (4,9), (4,10), (4,11),}
 
-    # map_7 = map_builder(nrows, ncols, black, path, start)
+#     # map_7 = map_builder(nrows, ncols, black, path, start)
 
-    # map 8
-    # ncols, nrows = 13, 10
-    # start = (6,1)
+#     # map 8
+#     # ncols, nrows = 13, 10
+#     # start = (6,1)
 
-    # path = {(8,1), (7,1), (6,1), (5,1), (4,1), (3,1), (2,1),
-    #         (5,2), (5,3), (5,4),
-    #         (2,4), (3,4), (4,4), (6,4), (7,4), (8,4),
-    #         (8,5), (8,6),
-    #         (7,6), (6,6), (5,6),
-    #         (5,7), (5,7), (5,8), (5,9), (5,10), (5,11),
-    #         (2,5), (2,6), (2,7), (2,8), (2,9), (2,10)}
+#     # path = {(8,1), (7,1), (6,1), (5,1), (4,1), (3,1), (2,1),
+#     #         (5,2), (5,3), (5,4),
+#     #         (2,4), (3,4), (4,4), (6,4), (7,4), (8,4),
+#     #         (8,5), (8,6),
+#     #         (7,6), (6,6), (5,6),
+#     #         (5,7), (5,7), (5,8), (5,9), (5,10), (5,11),
+#     #         (2,5), (2,6), (2,7), (2,8), (2,9), (2,10)}
 
-    # black = {(8,2), (2,2), (2,3), (3,3),
-    #          (1,6), (1,7), (1,8), (1,9), (1,10), (3,6), (3,7), (3,8), (3,9), (3,10),
-    #          (6,8), (6,9), (6,10), (6,11),
-    #          (7,8), (7,9), (7,10), (7,11),
-    #          (8,8), (8,9), (8,10), (8,11),}
+#     # black = {(8,2), (2,2), (2,3), (3,3),
+#     #          (1,6), (1,7), (1,8), (1,9), (1,10), (3,6), (3,7), (3,8), (3,9), (3,10),
+#     #          (6,8), (6,9), (6,10), (6,11),
+#     #          (7,8), (7,9), (7,10), (7,11),
+#     #          (8,8), (8,9), (8,10), (8,11),}
 
-    # map_8 = map_builder(nrows, ncols, black, path, start)
+#     # map_8 = map_builder(nrows, ncols, black, path, start)
 
-    # --------------------------------------------------------------------
+#     # --------------------------------------------------------------------
 
-    visualize_decision_and_nodevalues(map_1, 0)
+#     visualize_decision_and_nodevalues(map_1, 0)
