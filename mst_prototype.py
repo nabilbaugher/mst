@@ -64,6 +64,11 @@ A short summary of the various functions in this file:
         Re-weights probabilities, using parameter beta so that 
         low probabilities are overestimated, and high probabilities are underestimated.
         
+    raw_nodevalue_comb(map_, node, gamma=1, beta=1): returns value
+        Calculates value of a particular node, using gamma and beta parameters.
+        Gamma makes future events less valuable: value is scaled down by gamma for each timestep.
+        Beta is the same as in weight.
+        
 
 Overall representation:
     Our map is a tuple of tuples, where each tile is represented by a number:
