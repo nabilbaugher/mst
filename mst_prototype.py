@@ -373,13 +373,16 @@ def possible_paths(map_, pos):
 
 #Use memoize to cache results of map2tree, save for re-use
 @memoize
-def map2tree(map_):
+def map2tree(map_, disp = False):
     """
     Parameters
     ----------
     map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
            -tuple of tuples    has length = nrows, 
            -each tuple of ints has length = ncols.
+           
+    disp : boolean
+            If True, we print lots of helper text. If False, we don't.
            
     Returns
     -------
@@ -468,7 +471,7 @@ def map2tree(map_):
 
 def map_visualizer(map_, node=None):
     """
-    Turns a map representation into something a user can understand.
+    Turns a map representation into a human-interpretable image.
 
     Parameters
     ----------
@@ -482,6 +485,9 @@ def map_visualizer(map_, node=None):
 
     Returns
     -------
+    None
+    
+    
     Uses matplotlib.pyplot to make our map human-viewable.
     
     If node is given, the corresponding partially explored map will be displayed. Meaning, in this map,
@@ -494,16 +500,17 @@ def map_visualizer(map_, node=None):
     """
 
     nrows, ncols = len(map_), len(map_[0])
-
+    
+    #Using matplotlib.pyplot printing
     fig = plt.figure()
     ax = fig.add_subplot(111 ,aspect='equal')
     
     curr_map = map_
     
-    if node: #If given a node, we've chosen a partial path
-        #Draw that path!
+    if node: #If given a node, we've chosen a partial path.
+             #Draw that path!
         
-        tree = map2tree(map_)
+        tree = map2tree(map_) #Get tree to get nodes
         
         #Make sure that this node is valid!
         try:
@@ -519,31 +526,50 @@ def map_visualizer(map_, node=None):
         #Update map based on our last step
         curr_map = update_map(curr_map, curr_pos, prev_pos)
         
-        
+        #row --> y axis, col --> x axis
+        #Thus, to do (x,y), we need tuples of the form (c,r)
         path = [(c ,r) for r ,c in path][::-1]
-        x, y = zip(*[(x + 0.5, nrows - y - 0.5) for x ,y in path])
-        ax.plot(x, y, 'o--',  markersize=4, label=node)
-        ax.plot(x[-1], y[-1], 's', markersize=8, color='purple')
+        #Also reversing order of path
+        
+        #Convert pairs of elements (x,y) into two lists: X and Y
+        X, Y = zip(*[ (x + 0.5, nrows - y - 0.5)   for x ,y in path])
+        #Offset (+0.5, -0.5) is so that our dots are centered on each tile
+        
+        
+        ###Plotting our path
+        
+        #Draw dotted line between each tile on path
+        ax.plot(X, Y, 'o--',  markersize=4, label=node)
+        
+        #Color our starting point (X[-1],Y[-1]) as purple
+        ax.plot(X[-1], Y[-1], 's', markersize=8, color='purple')
 
-    curr_map = [[int(cell) for cell in list(row)[:ncols]] for row in curr_map][::-1]
+    
+    #Convert string numbers into int numbers
+    curr_map = [[int(cell) for cell in row] for row in curr_map][::-1]
+    #Convert tuples into lists so we can index
+    
+    #Old version: not sure why they made it more complicated??
+    #curr_map = [[int(cell) for cell in list(row)[:ncols]] for row in curr_map][::-1]
 
-    # custom color maze
+    #Gather color map
     cmap = colors.ListedColormap \
         (['#9c9c9c', 'white', '#d074a4', '#b0943d', 'white', '#a1c38c', 'white', '#f5f5dc', 'moccasin'])
     boundaries = [0, 1, 2, 3, 4, 5, 6, 7, 8]
     norm = colors.BoundaryNorm(boundaries, cmap.N, clip=False)
 
-    # draw maze
+    #Draw maze using a mesh
     ax.pcolormesh(curr_map, edgecolors='lightgrey', linewidth=1, cmap=cmap, norm=norm)
     ax.set_aspect('equal')
 
     # Major ticks positions
-    ax.set_xticks([ i +0.5 for i in list(range(ncols))])
-    ax.set_yticks([ i +0.5 for i in list(range(nrows))[::-1]])
+    #+.5 so they're centered on each square
+    ax.set_xticks([ i +0.5 for i in range(ncols)])
+    ax.set_yticks([ i +0.5 for i in range(nrows)[::-1]]) #Flip so it matches row/column counting
 
     # Major ticks label (for readability of plot, (0,0) at top left)
-    ax.set_xticklabels([str(i) for i in list(range(ncols))])
-    ax.set_yticklabels([str(i) for i in list(range(nrows))])
+    ax.set_xticklabels([str(i) for i in range(ncols)])
+    ax.set_yticklabels([str(i) for i in range(nrows)])
 
     plt.show()
 
