@@ -40,19 +40,22 @@ A short summary of the various functions in this file:
         Updates our grid map to reflect the player moving: updates black (unseen) tiles to path (seen)
         *Uses new_observations
         
+    possible_paths(map_, pos)
+        Gives us every possible path from the player's position to revealing a black tile.
+        
 
 Overall representation:
     Our map is a tuple of tuples, where each tile is represented by a number:
-        -5 is the start tile
+        5 is the start tile
             Where player starts
             
-        -6 is the path tile
+        6 is the path tile
             Where player can walk, and is known by player
             
-        -0 is the black tile
+        0 is the black tile
             Unseen by player, converts into 6 when seen
             
-        -3 is the wall tile
+        3 is the wall tile
             Cannot be walked on by player; blocks their vision from seeing other tiles
     
 """
@@ -119,8 +122,6 @@ def raycaster(map_, pos):
     (r, c)  = pos #Coords of player
     nrows, ncols = len(map_), len(map_[0]) #Shape of grid
     observed = set() #Tiles our player can see
-    
-    
     
     ###Our approach: start from our position (r,c). 
     ###Gradually move further away, check what we can see: walls block our vision.
@@ -286,12 +287,12 @@ def update_map(map_, old_pos, new_pos):
 
     #Update map to reflect observations
     map_updated = [ 
-                    [6 if (r ,c) in observations #A visible tile is a "path" tile!
+                    [6 if (r ,c) in observations #A visible tile is now a "path" tile!
                      else map_[r][c] #Else, no change
                     for c in range(len(map_[0]))]
                     for r in range(len(map_))]
 
-    map_updated[old_pos[0]][old_pos[1]] = 6 #Our old position is now a path tile
+    map_updated[old_pos[0]][old_pos[1]] = 6 #Our old position is now a path tile: changes start position
 
     map_updated = tuple(tuple(row) for row in map_updated) #Convert to tuple of tuples
 
@@ -300,7 +301,15 @@ def update_map(map_, old_pos, new_pos):
 
 def possible_paths(map_, pos):
     """
-    Uses agenda-style breadth-first search to find every possible path through our map.
+    Uses breadth-first search to find every possible movement to a black tile from our current position.
+    
+    Assumes we move towards some black tiles, and no backtracking.
+    Thus, we only show paths that lead to us revealing black tiles. 
+    
+    Once any black tiles are revealed, the path terminates: we create a "partial path", that could be continued.
+    
+    We can think of this as every possible "next move" for our player, 
+    assuming they're moving to a cluster of black tiles.
 
     Parameters
     ----------
@@ -319,86 +328,132 @@ def possible_paths(map_, pos):
             
             For each path: the nth element of the list is the nth position on our path.
             
-        Returns a list of all possible path we could take through our map.
+        Returns a list of all possible paths we could take, that reveal black tiles at the end. 
+        These paths terminate upon reaching a black tile.
         
 
     """
-
-    nrows, ncols = len(map_[0]), len(map_)
+    nrows, ncols = len(map_), len(map_[0])
     
+    #BFS is implemented by the agenda. 
     agenda = [ [pos] ]
     paths = []
 
-    while agenda:
+    while agenda: #Still agendas left - incomplete paths.
 
-        path = agenda.pop(0)
-        r_, c_ = path[-1]
+        path = agenda.pop(0) #Get top of agenda
+        r_, c_ = path[-1] #Current position
 
-        for rr, cc in ((0 ,1), (0 ,-1), (1 ,0), (-1 ,0)):
+        for rr, cc in ((0 ,1), (0 ,-1), (1 ,0), (-1 ,0)): #Possible movement directions
+            
+            within_bounds = lambda x, lower, upper: max(min(x,upper), lower)
+        
+            #Make sure r and c are between bounds
+            r = within_bounds(r_ +rr,    0, nrows-1)
+            c = within_bounds(c_ +cc,    0, ncols-1)
 
-            r, c = max(min(r_ +rr, nrows -1), 0), max(min(c_ +cc, ncols -1), 0)
-
-            # ignore if neigh is a wall
-            if map_[r][c] == 3 or (r ,c) in path:
+            # If this is a wall(3): can't move through
+            # If in path: don't want to backtrack
+            if map_[r][c] == 3 or (r, c) in path: #Don't include this direction!
                 continue
-
-            # if new observation is made, then we have a path
+            
+            #Do we reveal a black square?
             observations = new_observations(map_, (r ,c))
 
-            if observations:
-                paths.append((path + [(r ,c)], observations))
-            else:
+            if observations: #If we reveal a black square, then we're finished.
+                #Show the whole path, paired with the squares which are revealed.
+                paths.append( ( path + [(r ,c)], observations ) )
+                
+            else: #No observation: path not ended, keep going.
                 agenda.append(path + [(r ,c)])
-
+                
     return paths
 
 
+
+#Use memoize to cache results of map2tree, save for re-use
 @memoize
 def map2tree(map_):
-    pp.pprint(map_)
-
+    """
+    Parameters
+    ----------
+    map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
+           -tuple of tuples    has length = nrows, 
+           -each tuple of ints has length = ncols.
+           
+    Returns
+    -------
+    tree: Dictionary of dictionaries - 
+          -Outer dictionary - keys are int, representing the index of that node (a specific partial path)
+                              vals are the node data as a dictionary
+                              
+          -Inner dictionary - keys are str representing node, vals give information about that particular node
+          
+        Stores all of the possible ways to move through the entire maze. Each node in our tree represents 
+        a partial path.
+    """
+    
+    pp.pprint(map_) #Print map
+        
     # determine start position
     remains = 0
     for r, row in enumerate(map_):
         for c, val in enumerate(row):
-            if val == 5:
+            if val == 5: #Found start position!
                 pos = (r ,c)
-            elif val == 0:
+            elif val == 0: #Count the number of black tiles
                 remains += 1
+                
+    #Create tree to edit
+    
+    #0 is the root node
 
-    tree = {0: {'pos': pos,
-                'remains': remains,
-                'path_from_par': [],
-                'path_from_root': [],
-                'steps_from_par': 0,
-                'steps_from_root': 0,
-                'celldistances': set(),
-                'children': set(),
-                'pid': None}}
+    tree = {0: {'pos': pos,             #Player position: starting position
+                'remains': remains,     #Count of black tiles
+                
+                'path_from_par': [],    #Path from parent node
+                'path_from_root': [],   #Path from root node
+                'steps_from_par': 0,    #Steps from parent node
+                'steps_from_root': 0,   #Steps from root node
+                
+                'celldistances': set(), #
+                
+                'children': set(),      #Child nodes: not set yet
+                'pid': None}}           #Parent ID: the root node has no parent
 
-    agenda = [(0, map_)]
+    #BFS in progress
+    agenda = [(0, map_)] #(node, current map)
     print('1', tree)
+    
     while agenda: # in each loop, find and append children
 
-        node, updated_map = agenda.pop(0)
-        pos = tree[node]['pos']
-        print('PPPPP', possible_paths(updated_map, pos))
-        for path, observation in possible_paths(updated_map, pos):
+        node, updated_map = agenda.pop(0) #Grab first element
+        pos = tree[node]['pos'] #Current position
+        
+        print('PPPPP', possible_paths(updated_map, pos)) #What next moves are available?
+        
+        for path, observation in possible_paths(updated_map, pos): #Create a node for each next move
             branch = {'pos': path[-1],
                       'remains': tree[node]['remains' ] -len(observation),
-                      'path_from_par': path,
-                      'path_from_root': tree[node]['path_from_root'] + path,
-                      'steps_from_par': len(path) - 1,
+                      
+                      'path_from_par': path, #Partial path
+                      'path_from_root': tree[node]['path_from_root'] + path, #Full path
+                      'steps_from_par': len(path) - 1, 
                       'steps_from_root': tree[node]['steps_from_root'] + len(path) - 1,
-                      'celldistances': observation,
+                      
+                      'celldistances': observation, #Which squares are revealed?
                       'children': set(),
-                      'pid': node,
-                      'map': updated_map}
+                      'pid': node, #Parent node id
+                      'map': updated_map} #New modified map
 
-            new_node = max(tree ) +1
+            new_node = max(tree ) +1 #Enumerate: max gives us most recent (highest index) node
+            
+            #Add our new node to the agenda: expand this path further
             agenda.append((new_node, update_map(updated_map, path[0], path[-1])))
-
+            
+            #Make the parent-child relation
             tree[node]['children'].add(new_node)
+            #Add child to tree
             tree[new_node] = branch
     print('t', tree)
     return tree
@@ -407,31 +462,70 @@ def map2tree(map_):
 # ----------------------
 # Map & Path Visualizer
 # ----------------------
+"""
+0: hidden, 2: exit, 3: wall, 5: start, 6: open
+"""
 
-
-def map_visualizer(maze, node=None):
+def map_visualizer(map_, node=None):
     """
-    0: hidden, 2: exit, 3: wall, 5: start, 6: open
+    Turns a map representation into something a user can understand.
+
+    Parameters
+    ----------
+    map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
+           -tuple of tuples    has length = nrows, 
+           -each tuple of ints has length = ncols.
+    node : int, optional
+        Visualize a specific node for this map: in other words, show a partially explored map. 
+        node is simply the number id for one of these partial paths.
+            -Note: If the id is too high, there may be no corresponding node.
+
+    Returns
+    -------
+    Uses matplotlib.pyplot to make our map human-viewable.
+    
+    If node is given, the corresponding partially explored map will be displayed. Meaning, in this map,
+    our player will have moved around to explore some of the black tiles.
+    
+    The map structure will still match map_, but it will display the path taken with a dotted line,
+    And any squares that have been viewed by this player is 
+
+
     """
 
-    nrows, ncols = len(maze), len(maze[0])
+    nrows, ncols = len(map_), len(map_[0])
 
     fig = plt.figure()
     ax = fig.add_subplot(111 ,aspect='equal')
+    
+    curr_map = map_
+    
+    if node: #If given a node, we've chosen a partial path
+        #Draw that path!
+        
+        tree = map2tree(map_)
+        
+        #Make sure that this node is valid!
+        try:
+            path = tree[node]['path_from_root']
+        except:
+            raise ValueError(f"The node value {node} is not in range: this node does not exist!")
 
-    if node: # draw path
-        tree = map2tree(maze)
-        path = tree[node]['path_from_root']
-
-        maze = tree[node]['map']
-        maze = update_map(maze, tree[node]['pos'], path[-1])
-
+        #Get the map matching this node
+        curr_map = tree[node]['map']
+        curr_pos = tree[node]['pos']
+        prev_pos = path[-1]
+        
+        #Update map based on our last step
+        curr_map = update_map(curr_map, curr_pos, prev_pos)
+        
+        
         path = [(c ,r) for r ,c in path][::-1]
         x, y = zip(*[(x + 0.5, nrows - y - 0.5) for x ,y in path])
         ax.plot(x, y, 'o--',  markersize=4, label=node)
         ax.plot(x[-1], y[-1], 's', markersize=8, color='purple')
 
-    maze = [[int(cell) for cell in list(row)[:ncols]] for row in maze][::-1]
+    curr_map = [[int(cell) for cell in list(row)[:ncols]] for row in curr_map][::-1]
 
     # custom color maze
     cmap = colors.ListedColormap \
@@ -440,7 +534,7 @@ def map_visualizer(maze, node=None):
     norm = colors.BoundaryNorm(boundaries, cmap.N, clip=False)
 
     # draw maze
-    ax.pcolormesh(maze, edgecolors='lightgrey', linewidth=1, cmap=cmap, norm=norm)
+    ax.pcolormesh(curr_map, edgecolors='lightgrey', linewidth=1, cmap=cmap, norm=norm)
     ax.set_aspect('equal')
 
     # Major ticks positions
@@ -633,15 +727,15 @@ def visualize_decision_and_nodevalues(maze, pid):
 #     import pprint
 #     pp = pprint.PrettyPrinter(compact=False)
 
-#     # map 1
-#     map_1 = ((3, 3, 3, 3, 3, 3, 3, 3, 3),
-#              (3, 3, 3, 3, 0, 3, 0, 3, 3),
-#              (3, 3, 3, 3, 0, 3, 0, 3, 3),
-#              (3, 5, 6, 6, 6, 6, 6, 6, 3),
-#              (3, 6, 3, 3, 3, 3, 3, 6, 3),
-#              (3, 6, 6, 6, 6, 6, 6, 6, 3),
-#              (3, 3, 0, 0, 3, 3, 3, 3, 3),
-#              (3, 3, 3, 3, 3, 3, 3, 3, 3),)
+    # map 1
+    # map_1 = ((3, 3, 3, 3, 3, 3, 3, 3, 3),
+    #           (3, 3, 3, 3, 0, 3, 0, 3, 3),
+    #           (3, 3, 3, 3, 0, 3, 0, 3, 3),
+    #           (3, 5, 6, 6, 6, 6, 6, 6, 3),
+    #           (3, 6, 3, 3, 3, 3, 3, 6, 3),
+    #           (3, 6, 6, 6, 6, 6, 6, 6, 3),
+    #           (3, 3, 0, 0, 3, 3, 3, 3, 3),
+    #           (3, 3, 3, 3, 3, 3, 3, 3, 3),)
 
 #     ncols, nrows = 13, 9
 
@@ -749,3 +843,12 @@ def visualize_decision_and_nodevalues(maze, pid):
 #     # --------------------------------------------------------------------
 
 #     visualize_decision_and_nodevalues(map_1, 0)
+
+map_1 = ((3, 3, 3, 3, 3, 3, 3, 3, 3),
+          (3, 3, 3, 3, 0, 3, 0, 3, 3),
+          (3, 3, 3, 3, 0, 3, 0, 3, 3),
+          (3, 5, 6, 6, 6, 6, 6, 6, 3),
+          (3, 6, 3, 3, 3, 3, 3, 6, 3),
+          (3, 6, 6, 6, 6, 6, 6, 6, 3),
+          (3, 3, 0, 0, 3, 3, 3, 3, 3),
+          (3, 3, 3, 3, 3, 3, 3, 3, 3),)
