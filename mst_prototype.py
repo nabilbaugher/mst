@@ -848,29 +848,45 @@ def node_values(map_, parameters, raw_nodevalue_func=raw_nodevalue_comb):
     Returns
     -------
     values_summary : 
-        Dictionary of all values based on node. 
+        Dictionary of dictionaries
+            Outer dictionary: key - each node in our tree excluding the root node.
+                              val - dict of each child and their val.
+            
+            Inner dictionary: key - the child node we're focused on.
+                              val - the value of that child node.
 
     """
 
-    values_summary = {} # {nid: {cid: value, cid: value, ...}}
+    values_summary = {} # {node: {child_node: value, child_node: value, ...}}
     tree = map2tree(map_)
+    
+    tau, gamma, beta = parameters
 
-    for nid in tree:
+    for node in tree: 
 
-        if nid == 'root': #No path: no need to find value
+        if node == 'root': #No path: no need to find value
             continue
 
-        children = tree[nid]['children']
+        children = tree[node]['children']
 
-        # ignore nid if it's not a decision node
+        # If node doesn't allow a choice, ignore it.
         if len(children) <= 1:
             continue
-
-        values_summary[nid] = {}
+        
+        #Inner dictionary
+        values_summary[node] = {}
+        
         print('Params', parameters)
-        raw_values = [ raw_nodevalue_func(map_, cid, 1,1) for cid in children ]
-        values = softmax(raw_values, 1)
-        values_summary[nid][1] = {cid: val for cid ,val in zip(children, values)}
+        
+        #Calulate value of each child, pre-softmax
+        raw_values = [ raw_nodevalue_func(map_, child_node, gamma, beta) 
+                      for child_node in children ]
+        
+        #Adjust these values using tau-shifted softmax: get probability
+        values = softmax(raw_values, tau) 
+        
+        
+        values_summary[node][1] = {child_node: val for child_node,val in zip(children, values)}
 
     return values_summary
 
