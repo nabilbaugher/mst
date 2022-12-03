@@ -26,22 +26,43 @@ def memoize(function):
 
 """
 A short summary of the various functions in this file:
-    map_builder(nrows, ncols, black, path, start)
+    
+    map_builder(nrows, ncols, black, path, start): return map_
         Uses a description of a map, and turns it into a "grid".
     
-    raycaster(map_, pos) 
+    raycaster(map_, pos): return observations
         Determines which tiles our player can see from their current position.
     
-    new_observations(map_, pos) 
+    new_observations(map_, pos): return new_observations
         Finds which tiles can the player see, which haven't been seen before
+        
         *Uses raycaster
         
-    update_map(map_, old_pos, new_pos)
+    update_map(map_, old_pos, new_pos): return map_updated
         Updates our grid map to reflect the player moving: updates black (unseen) tiles to path (seen)
+        
         *Uses new_observations
         
-    possible_paths(map_, pos)
+    possible_paths(map_, pos): returns paths
         Gives us every possible path from the player's position to revealing a black tile.
+        
+    map2tree(map_): returns tree
+        Converts our map into a tree of every possible path our player can take, assuming
+        they always move to reveal black tiles.
+        
+        *Uses possible_paths, update_map
+        
+    map_visualizer(map_, node=None): returns None
+        Takes in our map, and prints a version that is more human-readable
+        
+        *Uses map2tree, update_map
+        
+    softmax(values, tau): returns softvals
+        Applies softmax to our values, with the parameter tau to make terms more/less similar.
+    
+    weight(p, beta): returns p_weighted
+        Re-weights probabilities, using parameter beta so that 
+        low probabilities are overestimated, and high probabilities are underestimated.
         
 
 Overall representation:
@@ -57,6 +78,12 @@ Overall representation:
             
         3 is the wall tile
             Cannot be walked on by player; blocks their vision from seeing other tiles
+            
+        There is no "exit" tile. In the real game, one black square hides an exit tile, but 
+        in this game, our goal is to just find the value of our paths.
+        
+        We do not need to assign an exit tile to compute this value. 
+        Instead, we assume an even probability of the exit being in any black square. 
     
 """
 
@@ -373,16 +400,13 @@ def possible_paths(map_, pos):
 
 #Use memoize to cache results of map2tree, save for re-use
 @memoize
-def map2tree(map_, disp = False):
+def map2tree(map_):
     """
     Parameters
     ----------
     map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
            -tuple of tuples    has length = nrows, 
            -each tuple of ints has length = ncols.
-           
-    disp : boolean
-            If True, we print lots of helper text. If False, we don't.
            
     Returns
     -------
@@ -412,14 +436,13 @@ def map2tree(map_, disp = False):
     #0 is the root node
 
     tree = {0: {'pos': pos,             #Player position: starting position
-                'remains': remains,     #Count of black tiles
+                'remains': remains,     #Count of black tiles not seen.
+                'revealed': set(),      #Set of black tiles that have been revealed just now
                 
                 'path_from_par': [],    #Path from parent node
                 'path_from_root': [],   #Path from root node
                 'steps_from_par': 0,    #Steps from parent node
                 'steps_from_root': 0,   #Steps from root node
-                
-                'celldistances': set(), #
                 
                 'children': set(),      #Child nodes: not set yet
                 'pid': None}}           #Parent ID: the root node has no parent
@@ -435,16 +458,18 @@ def map2tree(map_, disp = False):
         
         print('PPPPP', possible_paths(updated_map, pos)) #What next moves are available?
         
-        for path, observation in possible_paths(updated_map, pos): #Create a node for each next move
+        #Create a node for each next move
+        #nobservation=new_observation output
+        for path, nobservation in possible_paths(updated_map, pos): 
             branch = {'pos': path[-1],
-                      'remains': tree[node]['remains' ] -len(observation),
+                      'remains': tree[node]['remains' ] -len(nobservation),
+                      'revealed': nobservation, #Which squares are revealed?
                       
                       'path_from_par': path, #Partial path
                       'path_from_root': tree[node]['path_from_root'] + path, #Full path
                       'steps_from_par': len(path) - 1, 
                       'steps_from_root': tree[node]['steps_from_root'] + len(path) - 1,
                       
-                      'celldistances': observation, #Which squares are revealed?
                       'children': set(),
                       'pid': node, #Parent node id
                       'map': updated_map} #New modified map
@@ -478,6 +503,7 @@ def map_visualizer(map_, node=None):
     map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
            -tuple of tuples    has length = nrows, 
            -each tuple of ints has length = ncols.
+           
     node : int, optional
         Visualize a specific node for this map: in other words, show a partially explored map. 
         node is simply the number id for one of these partial paths.
@@ -585,60 +611,248 @@ BETAS   = np.linspace(0 ,2 ,10)
 KAPPAS  = np.linspace(0 ,5 ,20)
 
 
+
+
 def softmax(values, tau):
-    """ small values are better, tau=1 is optimal
-    large tau converges to random agent """
+    """
+    Applies the softmax function to our inputs. Tau allows us to emphasize or de-emphasize the
+    difference between our values.
+
+    Parameters
+    ----------
+    values : List of ints
+        Set of values we want to take the softmax over.
+        
+    tau :    float
+        Controls how "noisy" our softmax operation is: larger tau increases "noise",
+        making our output terms more similar to each other.
+        
+        tau = 1: No effect. Softmax operates normally.
+        tau > 1: Output terms more similar - closer to a uniform distribution.
+        tau < 1: Output terms more different - emphasize larger values, downscale small values
+
+    Returns
+    -------
+    list
+        Returns the output of a softmax over our values.
+
+    """
 
     numer = [np.exp(-v * ( 1 /tau)) for v in values]
     denom = sum(numer)
     return [ n /denom for n in numer]
 
+""" probability weighting function: convert probability p to weight """
+
 def weight(p, beta):
-    """ probability weighting function: convert probability p to weight """
+    """
+    Re-weights probabilities, modelling on the human tendency 
+    to overestimate small probabilities, and underestimate large probabilities.
+    
+    Parameters
+    ----------
+    p : float in real number range [0,1]
+        Probability of an event.
+        
+    beta : float in real number range [0, inf]
+        Represents the amount we follow the human pattern described above -
+        bringing extreme values near 0 or 1 closer to the middle 0.5.
+        
+        beta = 1: No effect.
+        beta > 1: Shows the effect desired: extremes move closer to 0.5.
+        beta < 1: Opposite effect: extremes move further away from  0.5.
+
+    Returns
+    -------
+    float
+        Result of weighting: a probability in range [0,1]
+
+    """
+    
     return np.exp( -1 * (-np.log(p) )**beta )
-    # return p**beta / (p**beta + (1-p)**beta) ** (1/beta)
 
-# raw node value function: eu, du, pwu
-def ra_nodevalue(maze, nid, gamma=1, beta=1):
-    """ return raw node value BEFORE softmax being applied """
 
-    tree = map2tree(maze)
-    cell_distances = tree[nid]["celldistances"]
 
-    value, p_exit = 0, 0
+""" return raw node value BEFORE softmax being applied """
 
-    if tree[nid]["pid"] != "NA":
+###Rather than creating multiple different models, 
+###the combined value model is used to generalize all three: EU, DU, PWU
 
-        p_exit = len(cell_distances)/tree[tree[nid]["pid"]]["remains"]
+def raw_nodevalue_comb(map_, node, gamma=1, beta=1):
+    """
+    Get value of this node (this path through our maze), 
+    according to our parameters, before applying softmax and thus tau.
 
-        value += weight(p_exit, beta) * (tree[nid]["steps_from_root"] + np.mean(list(cell_distances)))
+    Parameters
+    ----------
+    map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
+           -tuple of tuples    has length = nrows, 
+           -each tuple of ints has length = ncols.
+           
+    node : int
+        Node id - identifies which node you're identifying the value of.
+        
+        A node represents a partially explored map. 
+        node is simply the number id for one of these partial paths.
+            -Note: If the id is too high, there may be no corresponding node.
+        
+    gamma : float in real number range [0,1],  optional
+        The "discount factor". Reflects the idea that we care less about rewards in the future.
+        For every timestep in the future, we scale down the reward by a factor of gamma.
+        
+        Thus, larger gamma means we care more about future rewards. 
+        Smaller gamma means we care less about future rewards.
+        
+    beta : float in real number range [0, inf], optional
+        Represents the amount we follow the human pattern described above -
+        bringing extreme values near 0 or 1 closer to the middle 0.5.
+        
+        beta = 1: No effect.
+        beta > 1: Shows the effect desired: extremes move closer to 0.5.
+        beta < 1: Opposite effect: extremes move further away from  0.5.
 
-    if tree[nid].get("children", []):
-        min_child_value = float("inf")
+    Returns
+    -------
+    value : float
+        Represents how "valuable" we think this particular path is, based on 
+        what we know about possible futures, and our parameters.
+        
+        This does not take softmax into account.
 
-        for cid in tree[nid]["children"]:
-            child_value = raw_nodevalue(maze, cid, gamma, beta)
-            if child_value < min_child_value:
+    """
+
+    tree = map2tree(map_)
+    revealed = tree[node]["revealed"] #Get all of the black squares
+
+    value, p_exit = 0, 0 #Initialize value as 0
+    
+    if tree[node]["pid"] != "NA": #NOT the root node: root node has no parent, no pid
+        
+        revealed_black = len(revealed) #Newly revealed tiles
+        
+        parent = tree[node]["pid"] #Get parent
+        total_black = tree[parent]["remains"] #Get total number of black tiles
+        
+        #What's the chance of just having found the exit this turn?
+        #Number of revealed tiles, divided by the tiles that remain.
+        p_exit = revealed_black/total_black
+        #Note that this is parent because we're ignoring any tiles from before this last turn
+        #We already know those tiles weren't the exit, or the game would be over
+
+        weighted_prob = weight(p_exit, beta) #Apply PWU: human bias in probabilities
+        
+        #Get distance to each possible exit: we assume one of them was correct!
+        player_pos     = np.array(tree[node]["pos"])
+        possible_exits = np.array(list(revealed))
+        
+        diff_to_exit   = np.abs( possible_exits - player_pos) #Difference in position, take abs
+        dists_to_exit  = np.sum(diff_to_exit, axis=1) #Add x and y coords for manhattan dist
+        
+        #How many steps have we walked? How many steps will we walk to the exit?
+        start_to_node = tree[node]["steps_from_root"] 
+        node_to_goal  = np.mean( dists_to_exit ) #Average the distance to each exit 
+
+        ###We originally had essentially
+        ###node_to_goal = np.mean(list(revealed))
+        ###Which doesn't seem to make any sense. Fixed?
+        
+        #Loss is the distance to the exit: add up two distance components.
+        loss = start_to_node + node_to_goal
+        
+        #Current step value applied.
+        value += weighted_prob * loss #Scale loss by probability
+    
+    #If we're at the root node, we haven't moved: there's no way that we already won.
+    #Value for current step is 0.
+        
+    if tree[node].get("children", []): #Does this node have children?
+        min_child_value = float("inf") #We want to pick min value: any will beat float("inf")
+
+        for cid in tree[node]["children"]: #Iter over kids
+            child_value = raw_nodevalue_comb(map_, cid, gamma, beta) #Do recursion
+            
+            if child_value < min_child_value: #Update val to find optimal child
                 min_child_value = child_value
-
-        value += gamma * weight(1-p_exit, beta) * min_child_value
+        
+        weighted_comp = weight(1-p_exit, beta) #Re-weight the complement, (1-p)
+        
+        #Gamma is our discount factor: applied for future steps.
+        value += gamma * weighted_comp * min_child_value
+        #Future step value applied
 
     return value
 
-def raw_nodevalue(maze, nid, gamma=1, beta=1):
-    """ return raw node value BEFORE softmax being applied """
-    Tree= map2tree(maze)
-    pid= Tree[nid]['pid']
-    return 1/len(Tree[pid]['children'])
+########This old code is super confusing
+########The function name ra_nodevalue is used literally nowhere else in the code
+########The raw_nodevalue function makes no effect to include gamma or beta??
+########Ngl I don't trust this
 
-def node_values(maze, parameters, raw_nodevalue_func):
+# def ra_nodevalue(maze, nid, gamma=1, beta=1):
+    
+
+#     tree = map2tree(maze)
+#     cell_distances = tree[nid]["celldistances"]
+
+#     value, p_exit = 0, 0
+
+#     if tree[nid]["pid"] != "NA":
+
+#         p_exit = len(cell_distances)/tree[tree[nid]["pid"]]["remains"]
+
+#         value += weight(p_exit, beta) * (tree[nid]["steps_from_root"] + np.mean(list(cell_distances)))
+
+#     if tree[nid].get("children", []):
+#         min_child_value = float("inf")
+
+#         for cid in tree[nid]["children"]:
+#             child_value = raw_nodevalue(maze, cid, gamma, beta)
+#             if child_value < min_child_value:
+#                 min_child_value = child_value
+
+#         value += gamma * weight(1-p_exit, beta) * min_child_value
+
+#     return value
+
+# def raw_nodevalue(maze, nid, gamma=1, beta=1):
+#     """ return raw node value BEFORE softmax being applied """
+#     Tree= map2tree(maze)
+#     pid= Tree[nid]['pid']
+#     return 1/len(Tree[pid]['children'])
+
+def node_values(map_, parameters, raw_nodevalue_func=raw_nodevalue_comb):
+    """
+    Returns the value of every possible path (node) for the entire map.
+    
+
+    Parameters
+    ----------
+    map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
+           -tuple of tuples    has length = nrows, 
+           -each tuple of ints has length = ncols.
+           
+    parameters : tuple of three floats.
+                 parameters to help calculate values. 
+                 
+                 If using raw_nodevalue_func=raw_nodevalue_comb, 
+                 Contains our parameters (tau, gamma, beta).
+                 
+    raw_nodevalue_func : function, optional
+        A function that computes the value of a single node.
+        Configurable, so we can try out different functions/parameters for computing node values.
+
+    Returns
+    -------
+    values_summary : 
+        Dictionary of all values based on node. 
+
+    """
 
     values_summary = {} # {nid: {cid: value, cid: value, ...}}
-    tree = map2tree(maze)
+    tree = map2tree(map_)
 
     for nid in tree:
 
-        if nid == 'root':
+        if nid == 'root': #No path: no need to find value
             continue
 
         children = tree[nid]['children']
@@ -649,7 +863,7 @@ def node_values(maze, parameters, raw_nodevalue_func):
 
         values_summary[nid] = {}
         print('Params', parameters)
-        raw_values = [ raw_nodevalue_func(maze, cid, 1,1) for cid in children ]
+        raw_values = [ raw_nodevalue_func(map_, cid, 1,1) for cid in children ]
         values = softmax(raw_values, 1)
         values_summary[nid][1] = {cid: val for cid ,val in zip(children, values)}
 

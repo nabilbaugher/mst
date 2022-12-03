@@ -5,9 +5,10 @@ import matplotlib.colors as colors
 import pickle
 import time
 import itertools
+
 from mst_prototype import map2tree, node_values, map_builder
 
-from mst_prototype import raw_nodevalue
+from mst_prototype import raw_nodevalue_comb
 
 pp = pprint.PrettyPrinter(compact=False)
 
@@ -123,9 +124,9 @@ def visualize_juxtaposed_best_paths(maze):
     _, axs = plt.subplots(1, 3)
     axs = axs.flat
 
-    raw_nodevalue_func_and_params = [('Expected_Utility', raw_nodevalue, (1,1,1)),
-                                     ('Discounted_Utillity', raw_nodevalue, (1,1,1)),
-                                     ('Probability_Weighted', raw_nodevalue, (1,1,1))]
+    raw_nodevalue_func_and_params = [('Expected_Utility', raw_nodevalue_comb, (1,1,1)),
+                                     ('Discounted_Utillity', raw_nodevalue_comb, (1,1,1)),
+                                     ('Probability_Weighted', raw_nodevalue_comb, (1,1,1))]
 
     for ax, (model_name, raw_nodevalue_func, params) in zip(axs, raw_nodevalue_func_and_params):
 

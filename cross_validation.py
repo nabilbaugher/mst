@@ -20,11 +20,11 @@ with open(f'__experiment_1/parsed_data/subject_decisions.pickle', 'rb') as handl
 def split_train_test_kfold(decisions_list, k=4):
     """ k = 4 """
 
-    n = len(decisions_list) // 4  # length of each split
-    splits = [decisions_list[i * n: (i + 1) * n] for i in range(4)]
+    n = len(decisions_list) // k  # length of each split
+    splits = [decisions_list[i * n: (i + 1) * n] for i in range(k)]
 
     for i in range(k):
-        train = sum([splits[j] for j in range(4) if j != i], [])
+        train = sum([splits[j] for j in range(k) if j != i], [])
         test = splits[i]
 
         yield train, test
@@ -49,7 +49,7 @@ def model_preference():
     model2parameters = {
         'Expected_Utility': [(tau, 1, 1) for tau in models.TAUS],
         'Discounted_Utility': [(round(tau, 3), round(gamma, 3), 1) for tau in models.TAUS for gamma in models.GAMMAS],
-        'Probability_Weighted_Utility': [(round(tau, 3), 1, round(gamma, 3)) for tau in models.TAUS for gamma in
+        'Probability_Weighted_Utility': [(round(tau, 3), 1, round(beta, 3)) for tau in models.TAUS for beta in
                                          models.BETAS]
     }
 
