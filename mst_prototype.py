@@ -149,6 +149,8 @@ def raycaster(map_, pos):
            -tuple of tuples    has length = nrows, 
            -each tuple of ints has length = ncols.
            
+           Our "maze" the player is moving through.
+           
     pos : tuple (int,int)
         The current position of our player on the map.
 
@@ -274,6 +276,8 @@ def new_observations(map_, pos):
            -tuple of tuples    has length = nrows, 
            -each tuple of ints has length = ncols.
            
+           Our "maze" the player is moving through.
+           
     pos : tuple (int,int)
         The current position of our player on the map.
 
@@ -307,6 +311,8 @@ def update_map(map_, old_pos, new_pos):
     map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
            -tuple of tuples    has length = nrows, 
            -each tuple of ints has length = ncols.
+           
+           Our "maze" the player is moving through.
            
     old_pos : tuple (int,int) - previous position on map.
     new_pos : tuple (int,int) - current position on map.
@@ -356,6 +362,8 @@ def possible_paths(map_, pos):
     map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
            -tuple of tuples    has length = nrows, 
            -each tuple of ints has length = ncols.
+           
+           Our "maze" the player is moving through.
            
     pos : tuple (int,int)
         The current position of our player on the map.
@@ -420,6 +428,8 @@ def map2tree(map_):
     map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
            -tuple of tuples    has length = nrows, 
            -each tuple of ints has length = ncols.
+           
+           Our "maze" the player is moving through.
            
     Returns
     -------
@@ -521,8 +531,10 @@ def map_visualizer(map_, node=None):
     Parameters
     ----------
     map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
-            -tuple of tuples    has length = nrows, 
-            -each tuple of ints has length = ncols.
+           -tuple of tuples    has length = nrows, 
+           -each tuple of ints has length = ncols.
+            
+            Our "maze" the player is moving through.
            
     node : int, optional
         Visualize a specific node for this map: in other words, show a partially explored map. 
@@ -709,6 +721,8 @@ def raw_nodevalue_comb(map_, node, gamma=1, beta=1):
            -tuple of tuples    has length = nrows, 
            -each tuple of ints has length = ncols.
            
+           Our "maze" the player is moving through.
+           
     node : int
         Node id - identifies which node you're identifying the value of.
         
@@ -813,6 +827,8 @@ def node_values(map_, parameters, raw_nodevalue_func=raw_nodevalue_comb):
     map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
            -tuple of tuples    has length = nrows, 
            -each tuple of ints has length = ncols.
+           
+           Our "maze" the player is moving through.
            
     parameters : tuple of three floats.
                  parameters to help calculate values. 
