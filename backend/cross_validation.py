@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import random
 
 import loglikes
-import models
 
 pp = pprint.PrettyPrinter(compact=False, width=90)
 

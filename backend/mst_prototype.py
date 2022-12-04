@@ -66,10 +66,12 @@ A short summary of the various functions in this file:
         Beta is the same as in weight.
         *Uses weight
         
-    node_values(map_, parameters, raw_nodevalue_func=raw_nodevalue_comb): return values_summary
-        Calculates the value of every node, using tau, gamma, and beta parameters.
-        *Uses softmax
-        *Uses raw_nodevalue_comb by default
+    node_values(map_, node_params, parent_params, 
+                raw_nodevalue_func=raw_nodevalue_comb, parent_nodeprob_func = softmax): return values_summary
+        Calculates the value of every node, using node_params and parent_params.
+        
+        **Uses softmax by default
+        **Uses raw_nodevalue_comb by default
         
 
 Overall representation:
@@ -81,16 +83,16 @@ Overall representation:
             Where player can walk, and is known by player
             
         0 is the black tile
-            Unseen by player, converts into 6 when seen
+            Unseen by player, converts into 6 when seen.
             
         3 is the wall tile
             Cannot be walked on by player; blocks their vision from seeing other tiles
-            
-        There is no "exit" tile. In the real game, one black square hides an exit tile, but 
-        in this game, our goal is to just find the value of our paths.
         
-        We do not need to assign an exit tile to compute this value. 
-        Instead, we assume an even probability of the exit being in any black square. 
+        2 is the exit tile
+            Looks like a black tile until observed by the player: reaching it is the win condition
+        
+        When calculating, we assume that the exit tile is equally likely to be in any of the seemingly black squares,
+        even if we actually know where the exit tile is.
     
 """
 
@@ -114,6 +116,8 @@ def map_builder(nrows, ncols, black, path, start, exit_=None):
         The "win condition": if the player moves to this tile, the game ends. 
         If this parameter is set to None, there is no exit. If it is set to 'rand', it will randomly select from the blacks
 
+    Any square not specified becomes a wall square, which the player cannot traverse.
+    
     Returns
     -------
     tuple of tuples
@@ -654,7 +658,7 @@ def map_visualizer(map_, node=None):
 TAUS    = np.linspace(0.1, 100, 20)
 GAMMAS  = np.linspace(0 ,1 ,10)
 BETAS   = np.linspace(0 ,2 ,10)
-KAPPAS  = np.linspace(0 ,5 ,20)
+KAPPAS  = np.linspace(0 ,5 ,20) #Some kind of parameter added by the people who took this class before, maybe?
 
 
 
@@ -833,7 +837,7 @@ def raw_nodevalue_comb(map_, node, gamma=1, beta=1):
 #@memoize
 def node_values(map_,  node_params, parent_params,
                 raw_nodevalue_func=raw_nodevalue_comb, 
-                parent_nodevalue_func = softmax,
+                parent_nodeprob_func = softmax,
                 parent=None):
     """
     Returns the value of every possible path (node) for the entire map.
@@ -855,7 +859,9 @@ def node_values(map_,  node_params, parent_params,
                  
     raw_nodevalue_func : function, optional
         A function that computes the value of a single node.
-        Configurable, so we can try out different functions/parameters for computing node values.
+        
+    parent_nodeprob_func : function, optional
+        A function that computes the probability for each of our nodes.
         
     parent : int, optional
         If given this parameter, only find the node values which are the children of this node.
@@ -899,7 +905,7 @@ def node_values(map_,  node_params, parent_params,
                       for child_node in children ]
         
         #Apply whatever function you want to these raw values
-        values = parent_nodevalue_func(raw_values, *parent_params) 
+        values = parent_nodeprob_func(raw_values, *parent_params) 
         
         
         

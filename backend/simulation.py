@@ -7,7 +7,7 @@ import time
 import itertools
 
 from mst_prototype import map2tree, node_values, map_builder
-from mst_prototype import raw_nodevalue_comb
+from mst_prototype import raw_nodevalue_comb, softmax
 # from map_generator import generate_spiral_maps
 
 pp = pprint.PrettyPrinter(compact=False)
@@ -16,7 +16,7 @@ pp = pprint.PrettyPrinter(compact=False)
 
 """
 A short summary of the various functions in this file:
-    best_path(map_, params, raw_nodevalue_func): return path
+    best_path(map_, node_params, parent_params, raw_nodevalue_func): return path
         Based on our map and our value function, returns the best path for us to take.
         *Uses mst_prototype.node_values, mst_prototype.map2tree
     
@@ -31,7 +31,7 @@ A short summary of the various functions in this file:
         Draw the best path for multiple different models, to compare.
         *Uses best_path, visualize_maze, visualize_path
         
-        **eu_du_pwu default variable uses mst_prototype.raw_nodevalue_comb
+        **Uses mst_prototype.raw_nodevalue_comb by default
     
 """
 
@@ -39,8 +39,14 @@ A short summary of the various functions in this file:
 #with open(f'__experiment_1/parsed_data/tree.pickle', 'rb') as handle:
 #     TREE = pickle.load(handle)
 
+#Models example
+eu_du_pwu = [('Expected_Utility',     (1,1), (1,), raw_nodevalue_comb, softmax, ),
+             ('Discounted_Utillity',  (1,1), (1,), raw_nodevalue_comb, softmax, ),
+             ('Probability_Weighted', (1,1), (1,), raw_nodevalue_comb, softmax, )]
 
-def best_path(map_, node_params, parent_params, raw_nodevalue_func):
+
+
+def best_path(map_, model):
     """
     Finds the best path, based on our nodevalue function and parameters.
 
@@ -52,15 +58,16 @@ def best_path(map_, node_params, parent_params, raw_nodevalue_func):
             
             Our "maze" the player is moving through.
             
-    params : tuple of three floats.
-                 parameters to help calculate values. 
-                 
-                 If using raw_nodevalue_func=raw_nodevalue_comb, 
-                 Contains our parameters (tau, gamma, beta).
+    model : tuple of the form (str, function, function, tuple of floats, tuple of floats)
+            str is the name of the model
             
-    raw_nodevalue_func : function, optional
-        A function that computes the value of a single node.
-        Configurable, so we can try out different functions/parameters for computing node values.
+            first tuple has the parameters for node value
+            second tuple has the parameters for node probability
+            
+            first function is used to compute node value
+            second function is used to compute node probability
+            
+        Fully describes a single model for player action.
         
     Returns
     -------
@@ -71,8 +78,12 @@ def best_path(map_, node_params, parent_params, raw_nodevalue_func):
 
     """
     
+    (_, node_params, parent_params, raw_nodevalue_func, parent_nodeprob_func) = model
+    
     TREE = map2tree(map_)  #Generate tree
-    value_summary = node_values(map_, node_params, parent_params, raw_nodevalue_func) #Get all of our values
+    value_summary = node_values(map_, node_params, parent_params, 
+                                raw_nodevalue_func,
+                                parent_nodeprob_func) #Get all of our values
     
     node = 0
     
@@ -144,6 +155,7 @@ def visualize_maze(map_, ax=None):
     None.
 
     """
+    
     if ax is None:
         _, ax = plt.subplots(1)
 
@@ -235,9 +247,9 @@ def visualize_path(map_, path, ax):
 
 ###(gamma, beta, tau) --> ( (gamma, beta), (tau,) )
 
-eu_du_pwu = [('Expected_Utility', raw_nodevalue_comb,     (1,1), (1,)),
-             ('Discounted_Utillity', raw_nodevalue_comb,  (1,1), (1,)),
-             ('Probability_Weighted', raw_nodevalue_comb, (1,1), (1,))]
+eu_du_pwu = [('Expected_Utility',     (1,1), (1,), raw_nodevalue_comb, softmax, ),
+             ('Discounted_Utillity',  (1,1), (1,), raw_nodevalue_comb, softmax, ),
+             ('Probability_Weighted', (1,1), (1,), raw_nodevalue_comb, softmax, )]
 
 def visualize_juxtaposed_best_paths(map_, models= eu_du_pwu):
     """
@@ -252,17 +264,17 @@ def visualize_juxtaposed_best_paths(map_, models= eu_du_pwu):
             
             Our "maze" the player is moving through.
         
-    models: list of tuples ( str, function, tuple(float, float float) )
-    
-            -list of tuples: each tuple represents a different way to measure the best value 
-                -str: The name of the value function approach
-                
-                -function: The value function we use for each node.
-                
-                -tuple(float,float,float): The parameters for our value function.
-                    -Assuming we use raw_nodevalue_comb, these parameters are (tau, gamma, beta)
-            
-            Contains all of the different value functions we want to compare.
+    models : list of tuples 
+         Each tuple of the form (str, function, function, tuple of floats, tuple of floats)
+             str is the name of the model
+             
+             first tuple has the parameters for node value
+             second tuple has the parameters for node probability
+             
+             first function is used to compute node value
+             second function is used to compute node probability
+             
+         Each tuple represents a model we want to try out.
 
     Returns
     -------
@@ -275,15 +287,16 @@ def visualize_juxtaposed_best_paths(map_, models= eu_du_pwu):
     axs = axs.flat
 
     #Each value function gets draw on its own map
-    for ax, (model_name, raw_nodevalue_func, node_params, parent_params) in zip(axs, models):
+    for ax, model in zip(axs, models):
         
         #Get the best path
-        path = best_path(map_, node_params, parent_params, raw_nodevalue_func )
+        path = best_path(map_, model )
         #Draw our maze
         visualize_maze(map_, ax)
         #Draw the path on our maze
         visualize_path(map_, path, ax)
         #Label this maze
+        model_name = model[0]
         ax.set_title(model_name)
 
     plt.show()
