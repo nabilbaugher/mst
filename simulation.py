@@ -211,7 +211,8 @@ def visualize_path(map_, path, ax):
 
     ax.legend(loc='upper left', bbox_to_anchor=(0,-0.1)) #Add legend
     
-    
+
+###(tau, gamma, beta)
 
 eu_du_pwu = [('Expected_Utility', raw_nodevalue_comb, (1,1,1)),
              ('Discounted_Utillity', raw_nodevalue_comb, (1,1,1)),
@@ -231,23 +232,37 @@ def visualize_juxtaposed_best_paths(map_, raw_nodevalue_func_and_params= eu_du_p
             Our "maze" the player is moving through.
         
     raw_nodevalue_func_and_param: list of tuples ( str, function, tuple(float, float float) )
+    
             -list of tuples: each tuple represents a different way to measure the best value 
+                -str: The name of the value function approach
+                
+                -function: The value function we use for each node.
+                
+                -tuple(float,float,float): The parameters for our value function.
+                    -Assuming we use raw_nodevalue_comb, these parameters are (tau, gamma, beta)
+            
+            Contains all of the different value functions we want to compare.
 
     Returns
     -------
     None.
 
     """
-
-    _, axs = plt.subplots(1, 3)
+    num_funcs = len(raw_nodevalue_func_and_params)
+    #Empty plot to draw on
+    _, axs = plt.subplots(1, num_funcs)
     axs = axs.flat
 
-
+    #Each value function gets draw on its own map
     for ax, (model_name, raw_nodevalue_func, params) in zip(axs, raw_nodevalue_func_and_params):
-
+        
+        #Get the best path
         path = best_path(map_, params, raw_nodevalue_func )
+        #Draw our maze
         visualize_maze(map_, ax)
+        #Draw the path on our maze
         visualize_path(map_, path, ax)
+        #Label this maze
         ax.set_title(model_name)
 
     plt.show()
