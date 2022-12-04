@@ -69,6 +69,9 @@ A short summary of the various functions in this file:
         Gamma makes future events less valuable: value is scaled down by gamma for each timestep.
         Beta is the same as in weight.
         
+    node_values(map_, parameters, raw_nodevalue_func=raw_nodevalue_comb): return values_summary
+        Calculates the value of every node, using tau, gamma, and beta parameters.
+        
 
 Overall representation:
     Our map is a tuple of tuples, where each tile is represented by a number:
@@ -425,7 +428,7 @@ def map2tree(map_):
         a partial path.
     """
     
-    pp.pprint(map_) #Print map
+    #pp.pprint(map_) #Print map
         
     # determine start position
     remains = 0
@@ -454,14 +457,14 @@ def map2tree(map_):
 
     #BFS in progress
     agenda = [(0, map_)] #(node, current map)
-    print('1', tree)
+    #print('1', tree)
     
     while agenda: # in each loop, find and append children
 
         node, updated_map = agenda.pop(0) #Grab first element
         pos = tree[node]['pos'] #Current position
         
-        print('PPPPP', possible_paths(updated_map, pos)) #What next moves are available?
+        #print('PPPPP', possible_paths(updated_map, pos)) #What next moves are available?
         
         #Create a node for each next move
         #nobservation=new_observation output
@@ -488,7 +491,7 @@ def map2tree(map_):
             tree[node]['children'].add(new_node)
             #Add child to tree
             tree[new_node] = branch
-    print('t', tree)
+    #print('t', tree)
     return tree
 
 
@@ -499,110 +502,110 @@ def map2tree(map_):
 0: hidden, 2: exit, 3: wall, 5: start, 6: open
 """
 
-def map_visualizer(map_, node=None):
-    """
-    Turns a map representation into a human-interpretable image.
+# def map_visualizer(map_, node=None):
+#     """
+#     Turns a map representation into a human-interpretable image.
 
-    Parameters
-    ----------
-    map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
-           -tuple of tuples    has length = nrows, 
-           -each tuple of ints has length = ncols.
+#     Parameters
+#     ----------
+#     map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
+#            -tuple of tuples    has length = nrows, 
+#            -each tuple of ints has length = ncols.
            
-    node : int, optional
-        Visualize a specific node for this map: in other words, show a partially explored map. 
-        node is simply the number id for one of these partial paths.
-            -Note: If the id is too high, there may be no corresponding node.
+#     node : int, optional
+#         Visualize a specific node for this map: in other words, show a partially explored map. 
+#         node is simply the number id for one of these partial paths.
+#             -Note: If the id is too high, there may be no corresponding node.
 
-    Returns
-    -------
-    None
+#     Returns
+#     -------
+#     None
     
     
-    Uses matplotlib.pyplot to make our map human-viewable.
+#     Uses matplotlib.pyplot to make our map human-viewable.
     
-    If node is given, the corresponding partially explored map will be displayed. Meaning, in this map,
-    our player will have moved around to explore some of the black tiles.
+#     If node is given, the corresponding partially explored map will be displayed. Meaning, in this map,
+#     our player will have moved around to explore some of the black tiles.
     
-    The map structure will still match map_, but it will display the path taken with a dotted line,
-    And any squares that have been viewed by this player is 
+#     The map structure will still match map_, but it will display the path taken with a dotted line,
+#     And any squares that have been viewed by this player is 
 
 
-    """
+#     """
 
-    nrows, ncols = len(map_), len(map_[0])
+#     nrows, ncols = len(map_), len(map_[0])
     
-    #Using matplotlib.pyplot printing
-    fig = plt.figure()
-    ax = fig.add_subplot(111 ,aspect='equal')
+#     #Using matplotlib.pyplot printing
+#     fig = plt.figure()
+#     ax = fig.add_subplot(111 ,aspect='equal')
     
-    curr_map = map_
+#     curr_map = map_
     
-    if node: #If given a node, we've chosen a partial path.
-             #Draw that path!
+#     if node: #If given a node, we've chosen a partial path.
+#              #Draw that path!
         
-        tree = map2tree(map_) #Get tree to get nodes
+#         tree = map2tree(map_) #Get tree to get nodes
         
-        #Make sure that this node is valid!
-        try:
-            path = tree[node]['path_from_root']
-        except:
-            raise ValueError(f"The node value {node} is not in range: this node does not exist!")
+#         #Make sure that this node is valid!
+#         try:
+#             path = tree[node]['path_from_root']
+#         except:
+#             raise ValueError(f"The node value {node} is not in range: this node does not exist!")
 
-        #Get the map matching this node
-        curr_map = tree[node]['map']
-        curr_pos = tree[node]['pos']
-        prev_pos = path[-1]
+#         #Get the map matching this node
+#         curr_map = tree[node]['map']
+#         curr_pos = tree[node]['pos']
+#         prev_pos = path[-1]
         
-        #Update map based on our last step
-        curr_map = update_map(curr_map, curr_pos, prev_pos)
+#         #Update map based on our last step
+#         curr_map = update_map(curr_map, curr_pos, prev_pos)
         
-        #row --> y axis, col --> x axis
-        #Thus, to do (x,y), we need tuples of the form (c,r)
-        path = [(c ,r) for r ,c in path][::-1]
-        #Also reversing order of path
+#         #row --> y axis, col --> x axis
+#         #Thus, to do (x,y), we need tuples of the form (c,r)
+#         path = [(c ,r) for r ,c in path][::-1]
+#         #Also reversing order of path
         
-        #Convert pairs of elements (x,y) into two lists: X and Y
-        X, Y = zip(*[ (x + 0.5, nrows - y - 0.5)   for x ,y in path])
-        #Offset (+0.5, -0.5) is so that our dots are centered on each tile
+#         #Convert pairs of elements (x,y) into two lists: X and Y
+#         X, Y = zip(*[ (x + 0.5, nrows - y - 0.5)   for x ,y in path])
+#         #Offset (+0.5, -0.5) is so that our dots are centered on each tile
         
         
-        ###Plotting our path
+#         ###Plotting our path
         
-        #Draw dotted line between each tile on path
-        ax.plot(X, Y, 'o--',  markersize=4, label=node)
+#         #Draw dotted line between each tile on path
+#         ax.plot(X, Y, 'o--',  markersize=4, label=node)
         
-        #Color our starting point (X[-1],Y[-1]) as purple
-        ax.plot(X[-1], Y[-1], 's', markersize=8, color='purple')
+#         #Color our starting point (X[-1],Y[-1]) as purple
+#         ax.plot(X[-1], Y[-1], 's', markersize=8, color='purple')
 
     
-    #Convert string numbers into int numbers
-    curr_map = [[int(cell) for cell in row] for row in curr_map][::-1]
-    #Convert tuples into lists so we can index
+#     #Convert string numbers into int numbers
+#     curr_map = [[int(cell) for cell in row] for row in curr_map][::-1]
+#     #Convert tuples into lists so we can index
     
-    #Old version: not sure why they made it more complicated??
-    #curr_map = [[int(cell) for cell in list(row)[:ncols]] for row in curr_map][::-1]
+#     #Old version: not sure why they made it more complicated??
+#     #curr_map = [[int(cell) for cell in list(row)[:ncols]] for row in curr_map][::-1]
 
-    #Gather color map
-    cmap = colors.ListedColormap \
-        (['#9c9c9c', 'white', '#d074a4', '#b0943d', 'white', '#a1c38c', 'white', '#f5f5dc', 'moccasin'])
-    boundaries = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-    norm = colors.BoundaryNorm(boundaries, cmap.N, clip=False)
+#     #Gather color map
+#     cmap = colors.ListedColormap \
+#         (['#9c9c9c', 'white', '#d074a4', '#b0943d', 'white', '#a1c38c', 'white', '#f5f5dc', 'moccasin'])
+#     boundaries = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+#     norm = colors.BoundaryNorm(boundaries, cmap.N, clip=False)
 
-    #Draw maze using a mesh
-    ax.pcolormesh(curr_map, edgecolors='lightgrey', linewidth=1, cmap=cmap, norm=norm)
-    ax.set_aspect('equal')
+#     #Draw maze using a mesh
+#     ax.pcolormesh(curr_map, edgecolors='lightgrey', linewidth=1, cmap=cmap, norm=norm)
+#     ax.set_aspect('equal')
 
-    # Major ticks positions
-    #+.5 so they're centered on each square
-    ax.set_xticks([ i +0.5 for i in range(ncols)])
-    ax.set_yticks([ i +0.5 for i in range(nrows)[::-1]]) #Flip so it matches row/column counting
+#     # Major ticks positions
+#     #+.5 so they're centered on each square
+#     ax.set_xticks([ i +0.5 for i in range(ncols)])
+#     ax.set_yticks([ i +0.5 for i in range(nrows)[::-1]]) #Flip so it matches row/column counting
 
-    # Major ticks label (for readability of plot, (0,0) at top left)
-    ax.set_xticklabels([str(i) for i in range(ncols)])
-    ax.set_yticklabels([str(i) for i in range(nrows)])
+#     # Major ticks label (for readability of plot, (0,0) at top left)
+#     ax.set_xticklabels([str(i) for i in range(ncols)])
+#     ax.set_yticklabels([str(i) for i in range(nrows)])
 
-    plt.show()
+#     plt.show()
 
 
 # ----------------------
@@ -876,7 +879,7 @@ def node_values(map_, parameters, raw_nodevalue_func=raw_nodevalue_comb):
         #Inner dictionary
         values_summary[node] = {}
         
-        print('Params', parameters)
+        #print('Params', parameters)
         
         #Calulate value of each child, pre-softmax
         raw_values = [ raw_nodevalue_func(map_, child_node, gamma, beta) 
@@ -886,49 +889,56 @@ def node_values(map_, parameters, raw_nodevalue_func=raw_nodevalue_comb):
         values = softmax(raw_values, tau) 
         
         
+        
+        #Store these softmax-ed values
         values_summary[node][1] = {child_node: val for child_node,val in zip(children, values)}
+        #Why are we indexing 1? Unknown
 
     return values_summary
 
 
-def visualize_decision(maze, pid, ax):
-    """
-    0: hidden, 2: exit, 3: wall, 5: start, 6: open
-    """
-    tree = map2tree(maze)
+####Looks very similar to map_visualizer
+####But code is incomplete, and doesn't really work
 
-    # custom color map
-    cmap = colors.ListedColormap(['#9c9c9c', 'white', '#d074a4', '#b0943d', 'white', '#a1c38c', 'white', '#f5f5dc'])
-    boundaries = [0, 1, 2, 3, 4, 5, 6, 7]
-    norm = colors.BoundaryNorm(boundaries, cmap.N, clip=False)
+# def visualize_decision(maze, pid, ax):
+#     """
+#     0: hidden, 2: exit, 3: wall, 5: start, 6: open
+#     """
+#     tree = map2tree(maze)
 
-    # XXX fix orientation
-    maze = [[int(cell) for cell in list(row)[:ncols]] for row in maze][::-1]
+#     # custom color map
+#     cmap = colors.ListedColormap(['#9c9c9c', 'white', '#d074a4', '#b0943d', 'white', '#a1c38c', 'white', '#f5f5dc'])
+#     boundaries = [0, 1, 2, 3, 4, 5, 6, 7]
+#     norm = colors.BoundaryNorm(boundaries, cmap.N, clip=False)
 
-    # draw maze
-    ax.pcolormesh(maze, edgecolors='lightgrey', linewidth=1, cmap=cmap, norm=norm)
-    ax.set_aspect('equal')
+#     # XXX fix orientation
+#     maze = [[int(cell) for cell in list(row)[:ncols]] for row in maze][::-1]
 
-    ax.set_xticks([0.5 + j for j in range(ncols)], minor=False)
-    ax.set_xticklabels(list(range(ncols)))
-    ax.set_yticks([0.5 + i for i in range(nrows)], minor=False)
-    ax.set_yticklabels(list(range(nrows))[::-1])
+#     # draw maze
+#     ax.pcolormesh(maze, edgecolors='lightgrey', linewidth=1, cmap=cmap, norm=norm)
+#     ax.set_aspect('equal')
 
-    # plot path
-    for nid in tree[pid]['children']:
-        path = [(c ,r) for r ,c in tree[nid]['path_from_root']]
-        x, y = zip(*[(x + 0.5, nrows - y - 0.5) for x ,y in path])
-        ax.plot(x, y, 'o--',  markersize=4, label=nid)
-        ax.plot(x[0], y[0], 's', markersize=8, color='purple')
+#     ax.set_xticks([0.5 + j for j in range(ncols)], minor=False)
+#     ax.set_xticklabels(list(range(ncols)))
+#     ax.set_yticks([0.5 + i for i in range(nrows)], minor=False)
+#     ax.set_yticklabels(list(range(nrows))[::-1])
 
-    ax.legend(loc='upper left', bbox_to_anchor=(1 ,1))
+#     # plot path
+#     for nid in tree[pid]['children']:
+#         path = [(c ,r) for r ,c in tree[nid]['path_from_root']]
+#         x, y = zip(*[(x + 0.5, nrows - y - 0.5) for x ,y in path])
+#         ax.plot(x, y, 'o--',  markersize=4, label=nid)
+#         ax.plot(x[0], y[0], 's', markersize=8, color='purple')
+
+#     ax.legend(loc='upper left', bbox_to_anchor=(1 ,1))
 
 
-def visualize_nodevalues(maze, pid, parameters, param_indx, model_name, raw_nodevalue_func, ax):
+def visualize_nodevalues(map_, pid, parameters, param_indx, 
+                         model_name, raw_nodevalue_func, ax):
 
-    tree = map2tree(maze)
+    tree = map2tree(map_)
 
-    values_summary = node_values(maze, parameters, raw_nodevalue_func)
+    values_summary = node_values(map_, parameters, raw_nodevalue_func)
 
     decision_summary = {nid: [] for nid in tree[pid]['children']}
 
@@ -945,38 +955,41 @@ def visualize_nodevalues(maze, pid, parameters, param_indx, model_name, raw_node
     ax.legend()
 
 
-def visualize_decision_and_nodevalues(maze, pid):
+####Relies on visualize_decision
+####Thus, need to fix visualize_decision
 
-    _, axs = plt.subplots(2 ,2)
-    axs = axs.flat
+# def visualize_decision_and_nodevalues(maze, pid):
 
-    # draw maze and decision paths
-    visualize_decision(maze, pid, axs[0])
+#     _, axs = plt.subplots(2 ,2)
+#     axs = axs.flat
 
-    # node value plot for each model
+#     # draw maze and decision paths
+#     visualize_decision(maze, pid, axs[0])
 
-    parameters = [(tau ,1 ,1) for tau in TAUS]
-    raw_nodevalue_func = raw_nodevalue
-    # raw_nodevalue_func = random_nodevalue
-    visualize_nodevalues(maze, pid, parameters, 0, 'expected utility', raw_nodevalue_func, axs[1])
+#     # node value plot for each model
 
-    parameters = [(1, gamma, 1) for gamma in GAMMAS]
-    raw_nodevalue_func = raw_nodevalue
-    #raw_nodevalue_func = random_nodevalue
-    visualize_nodevalues(maze, pid, parameters, 1, 'discounted utility', raw_nodevalue_func, axs[2])
+#     parameters = [(tau ,1 ,1) for tau in TAUS]
+#     raw_nodevalue_func = raw_nodevalue
+#     # raw_nodevalue_func = random_nodevalue
+#     visualize_nodevalues(maze, pid, parameters, 0, 'expected utility', raw_nodevalue_func, axs[1])
 
-    parameters = [(1, 1, beta) for beta in BETAS]
-    raw_nodevalue_func = raw_nodevalue
-    #raw_nodevalue_func = random_nodevalue
-    visualize_nodevalues(maze, pid, parameters, 2, 'probability weighted utility', raw_nodevalue_func, axs[3])
+#     parameters = [(1, gamma, 1) for gamma in GAMMAS]
+#     raw_nodevalue_func = raw_nodevalue
+#     #raw_nodevalue_func = random_nodevalue
+#     visualize_nodevalues(maze, pid, parameters, 1, 'discounted utility', raw_nodevalue_func, axs[2])
 
-    # parameters = [(tau,) for tau in TAUS]
-    # raw_nodevalue_func = raw_nodevalue_h_cells
-    # visualize_nodevalues(maze, pid, parameters, 0, 'cells', raw_nodevalue_func, axs[4])
+#     parameters = [(1, 1, beta) for beta in BETAS]
+#     raw_nodevalue_func = raw_nodevalue
+#     #raw_nodevalue_func = random_nodevalue
+#     visualize_nodevalues(maze, pid, parameters, 2, 'probability weighted utility', raw_nodevalue_func, axs[3])
 
-    # parameters = [(tau,) for tau in TAUS]
-    # raw_nodevalue_func = raw_nodevalue_h_steps
-    # visualize_nodevalues(maze, pid, parameters, 0, 'steps', raw_nodevalue_func, axs[5])
+#     # parameters = [(tau,) for tau in TAUS]
+#     # raw_nodevalue_func = raw_nodevalue_h_cells
+#     # visualize_nodevalues(maze, pid, parameters, 0, 'cells', raw_nodevalue_func, axs[4])
+
+#     # parameters = [(tau,) for tau in TAUS]
+#     # raw_nodevalue_func = raw_nodevalue_h_steps
+#     # visualize_nodevalues(maze, pid, parameters, 0, 'steps', raw_nodevalue_func, axs[5])
 
     plt.show()
 
