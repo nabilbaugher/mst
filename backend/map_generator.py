@@ -1,4 +1,4 @@
-from mst_prototype import map_builder
+from mst_prototype import map_builder, map_visualizer
 import numpy as np
 import copy
 
@@ -45,7 +45,7 @@ def double_map_size(map):
 
     return tuple(tuple(x) for x in np_array)
 
-def generate_two_bigger_maps(map):
+def generate_different_size_maps(map):
     """
     Given a map with nrows rows and ncolumns columns, create 2 new maps that are larger
 
@@ -65,6 +65,7 @@ def generate_two_bigger_maps(map):
 
     Returns:
         A list of maps where each map is a tuple of tuples
+        [original_size_map, twice_as_big_map, four_times_as_big_map]
     """
 
     # Make a copy of the entire map and insert every other row or every other column
@@ -72,7 +73,7 @@ def generate_two_bigger_maps(map):
     twice_as_big_map = double_map_size(map)
     four_times_as_big_map = double_map_size(copy.deepcopy(twice_as_big_map))
 
-    return [twice_as_big_map, four_times_as_big_map]
+    return [map, twice_as_big_map, four_times_as_big_map]
 
 
 def generate_spiral_base_path(nrows, ncols):
@@ -147,3 +148,17 @@ def generate_trick_map(nrows, ncols, base_path):
 if __name__ == "__main__":
     # testing area
     generate_spiral_base_path(10, 10)
+
+
+    map_1 = ((3, 3, 3, 3, 3, 3, 3, 3, 3),
+          (3, 3, 3, 3, 0, 3, 0, 3, 3),
+          (3, 3, 3, 3, 0, 3, 0, 3, 3),
+          (3, 5, 6, 6, 6, 6, 6, 6, 3),
+          (3, 6, 3, 3, 3, 3, 3, 6, 3),
+          (3, 6, 6, 6, 6, 6, 6, 6, 3),
+          (3, 3, 0, 0, 3, 3, 3, 3, 3),
+          (3, 3, 3, 3, 3, 3, 3, 3, 3),)
+
+    new_size_maps = generate_different_size_maps(map_1)
+
+    map_visualizer(new_size_maps[2])
