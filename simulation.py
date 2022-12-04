@@ -200,7 +200,7 @@ def visualize_path(map_, path, ax):
     ax.legend(loc='upper left', bbox_to_anchor=(0,-0.1))
 
 
-def visualize_juxtaposed_best_paths(maze):
+def visualize_juxtaposed_best_paths(map_):
     """
     
 
@@ -224,9 +224,9 @@ def visualize_juxtaposed_best_paths(maze):
 
     for ax, (model_name, raw_nodevalue_func, params) in zip(axs, raw_nodevalue_func_and_params):
 
-        path = best_path(maze, params, raw_nodevalue_func )
-        visualize_maze(maze, ax)
-        visualize_path(maze, path, ax)
+        path = best_path(map_, params, raw_nodevalue_func )
+        visualize_maze(map_, ax)
+        visualize_path(map_, path, ax)
         ax.set_title(model_name)
 
     plt.show()
