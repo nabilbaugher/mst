@@ -66,10 +66,12 @@ A short summary of the various functions in this file:
         Beta is the same as in weight.
         *Uses weight
         
-    node_values(map_, parameters, raw_nodevalue_func=raw_nodevalue_comb): return values_summary
-        Calculates the value of every node, using tau, gamma, and beta parameters.
-        *Uses softmax
-        *Uses raw_nodevalue_comb by default
+    node_values(map_, node_params, parent_params, 
+                raw_nodevalue_func=raw_nodevalue_comb, parent_nodeprob_func = softmax): return values_summary
+        Calculates the value of every node, using node_params and parent_params.
+        
+        **Uses softmax by default
+        **Uses raw_nodevalue_comb by default
         
 
 Overall representation:
@@ -81,20 +83,20 @@ Overall representation:
             Where player can walk, and is known by player
             
         0 is the black tile
-            Unseen by player, converts into 6 when seen
+            Unseen by player, converts into 6 when seen.
             
         3 is the wall tile
             Cannot be walked on by player; blocks their vision from seeing other tiles
-            
-        There is no "exit" tile. In the real game, one black square hides an exit tile, but 
-        in this game, our goal is to just find the value of our paths.
         
-        We do not need to assign an exit tile to compute this value. 
-        Instead, we assume an even probability of the exit being in any black square. 
+        2 is the exit tile
+            Looks like a black tile until observed by the player: reaching it is the win condition
+        
+        When calculating, we assume that the exit tile is equally likely to be in any of the seemingly black squares,
+        even if we actually know where the exit tile is.
     
 """
 
-def map_builder(nrows, ncols, black, path, start):
+def map_builder(nrows, ncols, black, path, start, exit_=None):
     """
     This function turns a description of a map into its representation: a tuple of tuples, representing a grid.
     Each position on this grid is a "tile".
@@ -110,16 +112,28 @@ def map_builder(nrows, ncols, black, path, start):
         The tiles which are part of our path.
     start : tuple (int, int). 
         Our starting position on the map.
+    exit_:  tuple (int, int). Optional
+        The "win condition": if the player moves to this tile, the game ends. 
+        If this parameter is set to None, there is no exit. If it is set to 'rand', it will randomly select from the blacks
 
+    Any square not specified becomes a wall square, which the player cannot traverse.
+    
     Returns
     -------
     tuple of tuples
         A representation of our map, where different values represent different tile types.
 
     """
+    #if exit == None, then we have no exit
+        
+    if exit_ == 'rand': #Randomly generate our exit
+        exit_ = random.choice(black)
+        
+    
 
     return tuple(
                 tuple(     5 if (i ,j) == start  #Start tiles
+                      else 2 if (i ,j) == exit_  #Exit tile
                       else 6 if (i ,j) in path   #Path tiles
                       else 0 if (i ,j) in black  #Unseen tiles
                       else 3                     #Wall tiles (?)
@@ -288,7 +302,7 @@ def new_observations(map_, pos):
     for r ,c in observed:
 
         #0 represents "already seen by player"
-        if map_[r][c] != 0: #If already seen, don't add
+        if map_[r][c] not in (0,2): #If already seen, don't add
             continue
 
         new_observations.add((r ,c)) #If not seen, add to new 
@@ -327,7 +341,7 @@ def update_map(map_, old_pos, new_pos):
 
     #Update map to reflect observations
     map_updated = [ 
-                    [6 if (r ,c) in observations #A visible tile is now a "path" tile!
+                    [6 if (r ,c) in observations #A visible tile is now a "path" tile! Unless exit
                      else map_[r][c] #Else, no change
                     for c in range(len(map_[0]))]
                     for r in range(len(map_))]
@@ -455,7 +469,7 @@ def map2tree(map_):
         for c, val in enumerate(row):
             if val == 5: #Found start position!
                 pos = (r ,c)
-            elif val == 0: #Count the number of black tiles
+            elif val in (0,2): #Count the number of black tiles
                 remains += 1
                 
     #Create tree to edit
@@ -644,7 +658,7 @@ def map_visualizer(map_, node=None):
 TAUS    = np.linspace(0.1, 100, 20)
 GAMMAS  = np.linspace(0 ,1 ,10)
 BETAS   = np.linspace(0 ,2 ,10)
-KAPPAS  = np.linspace(0 ,5 ,20)
+KAPPAS  = np.linspace(0 ,5 ,20) #Some kind of parameter added by the people who took this class before, maybe?
 
 
 
@@ -821,7 +835,10 @@ def raw_nodevalue_comb(map_, node, gamma=1, beta=1):
     return value
 
 #@memoize
-def node_values(map_, params, raw_nodevalue_func=raw_nodevalue_comb, parent=None):
+def node_values(map_,  node_params, parent_params,
+                raw_nodevalue_func=raw_nodevalue_comb, 
+                parent_nodeprob_func = softmax,
+                parent=None):
     """
     Returns the value of every possible path (node) for the entire map.
     
@@ -833,16 +850,18 @@ def node_values(map_, params, raw_nodevalue_func=raw_nodevalue_comb, parent=None
            -each tuple of ints has length = ncols.
            
            Our "maze" the player is moving through.
-           
-    params : tuple of three floats.
-                 parameters to help calculate values. 
-                 
-                 If using raw_nodevalue_func=raw_nodevalue_comb, 
-                 Contains our parameters (tau, gamma, beta).
+    
+    node_params: tuple of floats.
+        Contains the parameters for calculating the raw value of one node.
+    
+    parent_params: tuple of floats.
+        Contains the parameters we need for calculating the probability of each child node, using values.
                  
     raw_nodevalue_func : function, optional
         A function that computes the value of a single node.
-        Configurable, so we can try out different functions/parameters for computing node values.
+        
+    parent_nodeprob_func : function, optional
+        A function that computes the probability for each of our nodes.
         
     parent : int, optional
         If given this parameter, only find the node values which are the children of this node.
@@ -862,8 +881,7 @@ def node_values(map_, params, raw_nodevalue_func=raw_nodevalue_comb, parent=None
 
     values_summary = {} # {node: {child_node: value, child_node: value, ...}}
     tree = map2tree(map_)
-    
-    tau, gamma, beta = params
+        
 
     for node in tree: 
         
@@ -883,11 +901,11 @@ def node_values(map_, params, raw_nodevalue_func=raw_nodevalue_comb, parent=None
         #print('Params', parameters)
         
         #Calulate value of each child, pre-softmax
-        raw_values = [ raw_nodevalue_func(map_, child_node, gamma, beta) 
+        raw_values = [ raw_nodevalue_func(map_, child_node, *node_params) 
                       for child_node in children ]
         
-        #Adjust these values using tau-shifted softmax: get probability
-        values = softmax(raw_values, tau) 
+        #Apply whatever function you want to these raw values
+        values = parent_nodeprob_func(raw_values, *parent_params) 
         
         
         
@@ -900,26 +918,26 @@ def node_values(map_, params, raw_nodevalue_func=raw_nodevalue_comb, parent=None
 
 
 
-def visualize_nodevalues(map_, pid, parameters, param_indx, 
-                         model_name, raw_nodevalue_func, ax):
+# def visualize_nodevalues(map_, pid, parameters, param_indx, 
+#                          model_name, raw_nodevalue_func, ax):
 
-    tree = map2tree(map_)
+#     tree = map2tree(map_)
 
-    values_summary = node_values(map_, parameters, raw_nodevalue_func)
+#     values_summary = node_values(map_, parameters, raw_nodevalue_func)
 
-    decision_summary = {nid: [] for nid in tree[pid]['children']}
+#     decision_summary = {nid: [] for nid in tree[pid]['children']}
 
-    for param in parameters:
-        for nid, val in values_summary[pid][param].items():
+#     for param in parameters:
+#         for nid, val in values_summary[pid][param].items():
 
-            decision_summary[nid].append(val)
+#             decision_summary[nid].append(val)
 
-    for nid, values in decision_summary.items():
-        ax.plot([param[param_indx] for param in parameters], values, 'o--', markersize=3, label=nid)
+#     for nid, values in decision_summary.items():
+#         ax.plot([param[param_indx] for param in parameters], values, 'o--', markersize=3, label=nid)
 
-    ax.set_title(model_name)
-    ax.grid()
-    ax.legend()
+#     ax.set_title(model_name)
+#     ax.grid()
+#     ax.legend()
 
 
 ####Looks very similar to map_visualizer
@@ -993,132 +1011,132 @@ def visualize_nodevalues(map_, pid, parameters, param_indx,
 #     # raw_nodevalue_func = raw_nodevalue_h_steps
 #     # visualize_nodevalues(maze, pid, parameters, 0, 'steps', raw_nodevalue_func, axs[5])
 
-    plt.show()
+    # plt.show()
 
 
 
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
 
-#     import pprint
-#     pp = pprint.PrettyPrinter(compact=False)
+    import pprint
+    pp = pprint.PrettyPrinter(compact=False)
 
-    # map 1
-    # map_1 = ((3, 3, 3, 3, 3, 3, 3, 3, 3),
-    #           (3, 3, 3, 3, 0, 3, 0, 3, 3),
-    #           (3, 3, 3, 3, 0, 3, 0, 3, 3),
-    #           (3, 5, 6, 6, 6, 6, 6, 6, 3),
-    #           (3, 6, 3, 3, 3, 3, 3, 6, 3),
-    #           (3, 6, 6, 6, 6, 6, 6, 6, 3),
-    #           (3, 3, 0, 0, 3, 3, 3, 3, 3),
-    #           (3, 3, 3, 3, 3, 3, 3, 3, 3),)
 
-#     ncols, nrows = 13, 9
+    map_1 = ((3, 3, 3, 3, 3, 3, 3, 3, 3),
+              (3, 3, 3, 3, 0, 3, 0, 3, 3),
+              (3, 3, 3, 3, 0, 3, 0, 3, 3),
+              (3, 5, 6, 6, 6, 6, 6, 6, 3),
+              (3, 6, 3, 3, 3, 3, 3, 6, 3),
+              (3, 6, 6, 6, 6, 6, 6, 6, 3),
+              (3, 3, 0, 0, 3, 3, 3, 3, 3),
+              (3, 3, 3, 3, 3, 3, 3, 3, 3),)
 
-#     # map 2
-#     ncols, nrows = 13, 9
-#     start = (5 ,4)
+    ncols, nrows = 13, 9
 
-#     path = {(3 ,1), (3 ,2), (3 ,3), (3 ,4), (3 ,5), (3 ,6), (3 ,7), (3 ,8),
-#             (5 ,1), (5 ,2), (5 ,3), (5 ,4), (5 ,5), (5 ,6), (5 ,7), (5 ,8),
-#             (4 ,1), (4 ,8)}
+    # map 2
+    ncols, nrows = 13, 9
+    start = (5 ,4)
 
-#     black = {(6 ,2), (7 ,2),
-#              (6 ,7), (7 ,7),
-#              (2 ,4), (1 ,4), (1 ,5), (1 ,6),
-#              (4 ,9), (4 ,10), (4 ,11)}
+    path = {(3 ,1), (3 ,2), (3 ,3), (3 ,4), (3 ,5), (3 ,6), (3 ,7), (3 ,8),
+            (5 ,1), (5 ,2), (5 ,3), (5 ,4), (5 ,5), (5 ,6), (5 ,7), (5 ,8),
+            (4 ,1), (4 ,8)}
 
-#     map_2 = map_builder(nrows, ncols, black, path, start)
+    black = {(6 ,2), (7 ,2),
+              (6 ,7), (7 ,7),
+              (2 ,4), (1 ,4), (1 ,5), (1 ,6),
+              (4 ,9), (4 ,10), (4 ,11)}
 
-#     # map 3
-#     # ncols, nrows = 12, 8
-#     # start = (1,3)
+    map_2 = map_builder(nrows, ncols, black, path, start)
 
-#     # path = {(1,1), (1,2), (1,3), (1,4), (1,5), (1,6), (1,7), (1,8), (1,9), (1,10),
-#     #         (2,3), (3,3), (4,3), (5,3), (6,3)}
+    # map 3
+    # ncols, nrows = 12, 8
+    # start = (1,3)
 
-#     # black = {(2,1), (3,1),
-#     #          (5,4), (5,5), (5,6), (6,4), (6,5), (6,6),
-#     #          (2,9), (2,10), (3,9), (3,10), (4,9), (4,10), (5,9), (5,10), (6,9)}
+    # path = {(1,1), (1,2), (1,3), (1,4), (1,5), (1,6), (1,7), (1,8), (1,9), (1,10),
+    #         (2,3), (3,3), (4,3), (5,3), (6,3)}
 
-#     # map_3 = map_builder(nrows, ncols, black, path, start)
+    # black = {(2,1), (3,1),
+    #          (5,4), (5,5), (5,6), (6,4), (6,5), (6,6),
+    #          (2,9), (2,10), (3,9), (3,10), (4,9), (4,10), (5,9), (5,10), (6,9)}
 
-#     # map 4
-#     # ncols, nrows = 12, 14
-#     # start = (7,3)
+    # map_3 = map_builder(nrows, ncols, black, path, start)
 
-#     # path = {(6,3), (5,3), (4,3), (3,3), (3,4), (3,5), (3,6), (3,6), (3,7), (3,8), (3,9), (3,10),
-#     #         (7,1), (7,2), (7,3), (7,4), (7,5), (7,6), (7,7), (7,8), (7,9), (7,10),
-#     #         (8,3), (9,3), (10,3), (11,3)}
+    # map 4
+    # ncols, nrows = 12, 14
+    # start = (7,3)
 
-#     # black = {(1,7), (1,8), (1,9), (1,10), (2,7), (2,8), (2,9), (2,10), (4,7), (4,8), (4,9), (4,10), (5,7), (5,8), (5,9), (5,10),
-#     #          (8,1), (9,1),
-#     #          (11,4), (11,5), (11,6), (11,7),
-#     #          (8,9), (8,10), (9,9), (9,10), (10,9), (10,10), (11,9), (11,10)}
+    # path = {(6,3), (5,3), (4,3), (3,3), (3,4), (3,5), (3,6), (3,6), (3,7), (3,8), (3,9), (3,10),
+    #         (7,1), (7,2), (7,3), (7,4), (7,5), (7,6), (7,7), (7,8), (7,9), (7,10),
+    #         (8,3), (9,3), (10,3), (11,3)}
 
-#     # map_4 = map_builder(nrows, ncols, black, path, start)
+    # black = {(1,7), (1,8), (1,9), (1,10), (2,7), (2,8), (2,9), (2,10), (4,7), (4,8), (4,9), (4,10), (5,7), (5,8), (5,9), (5,10),
+    #          (8,1), (9,1),
+    #          (11,4), (11,5), (11,6), (11,7),
+    #          (8,9), (8,10), (9,9), (9,10), (10,9), (10,10), (11,9), (11,10)}
 
-#     # map 5
-#     # ncols, nrows = 13, 5
-#     # start = (1,8)
+    # map_4 = map_builder(nrows, ncols, black, path, start)
 
-#     # path = {(1,1), (1,2), (1,3), (1,4), (1,5), (1,6), (1,7), (1,8), (1,9), (1,10), (1,11)}
+    # map 5
+    # ncols, nrows = 13, 5
+    # start = (1,8)
 
-#     # black = {(2,1), (2,2), (2,3), (3,1), (3,2), (3,3),
-#     #          (2,11), (3,11)}
+    # path = {(1,1), (1,2), (1,3), (1,4), (1,5), (1,6), (1,7), (1,8), (1,9), (1,10), (1,11)}
 
-#     # map_5 = map_builder(nrows, ncols, black, path, start)
+    # black = {(2,1), (2,2), (2,3), (3,1), (3,2), (3,3),
+    #          (2,11), (3,11)}
 
-#     # map 6
-#     # ncols, nrows = 14, 11
-#     # start = (6,1)
+    # map_5 = map_builder(nrows, ncols, black, path, start)
 
-#     # path = {(6,1), (6,2), (6,3), (6,4), (6,5), (6,6), (6,7), (6,8), (6,9), (6,10), (6,11), (6,12),
-#     #         (7,1), (8,1), (5,3), (4,3), (3,3), (6,5), (7,5), (8,5), (9,5),
-#     #         (6,7), (5,7), (4,7), (3,7), (2,7), (1,7)}
+    # map 6
+    # ncols, nrows = 14, 11
+    # start = (6,1)
 
-#     # black = {(8,2), (8,3), (4,4), (4,5), (3,4), (3,5), (8,6), (8,7), (8,8), (8,9), (9,6), (9,7), (9,8), (9,9),
-#     #          (1,8), (1,9), (1,10), (1,11), (2,8), (2,9), (2,10), (2,11),
-#     #          (3,8), (3,9), (3,10), (3,11), (4,8), (4,9), (4,10), (4,11),}
+    # path = {(6,1), (6,2), (6,3), (6,4), (6,5), (6,6), (6,7), (6,8), (6,9), (6,10), (6,11), (6,12),
+    #         (7,1), (8,1), (5,3), (4,3), (3,3), (6,5), (7,5), (8,5), (9,5),
+    #         (6,7), (5,7), (4,7), (3,7), (2,7), (1,7)}
 
-#     # map_6 = map_builder(nrows, ncols, black, path, start)
+    # black = {(8,2), (8,3), (4,4), (4,5), (3,4), (3,5), (8,6), (8,7), (8,8), (8,9), (9,6), (9,7), (9,8), (9,9),
+    #          (1,8), (1,9), (1,10), (1,11), (2,8), (2,9), (2,10), (2,11),
+    #          (3,8), (3,9), (3,10), (3,11), (4,8), (4,9), (4,10), (4,11),}
 
-#     # map 7
-#     # ncols, nrows = 14, 11
-#     # start = (6,1)
+    # map_6 = map_builder(nrows, ncols, black, path, start)
 
-#     # path = {(6,1), (6,2), (6,3), (6,4), (6,5), (6,6), (6,7), (6,8), (6,9), (6,10), (6,11), (6,12),
-#     #         (7,1), (8,1), (5,3), (4,3), (3,3), (6,5), (7,5), (8,5), (9,5),
-#     #         (6,7), (5,7), (4,7), (3,7), (2,7), (1,7)}
+    # map 7
+    # ncols, nrows = 14, 11
+    # start = (6,1)
 
-#     # black = {(8,2), (8,3), (4,4), (4,5), (3,4), (3,5), (8,6), (8,7), (8,8), (9,6), (9,7), (9,8),
-#     #          (3,8), (3,9), (3,10), (3,11), (4,8), (4,9), (4,10), (4,11),}
+    # path = {(6,1), (6,2), (6,3), (6,4), (6,5), (6,6), (6,7), (6,8), (6,9), (6,10), (6,11), (6,12),
+    #         (7,1), (8,1), (5,3), (4,3), (3,3), (6,5), (7,5), (8,5), (9,5),
+    #         (6,7), (5,7), (4,7), (3,7), (2,7), (1,7)}
 
-#     # map_7 = map_builder(nrows, ncols, black, path, start)
+    # black = {(8,2), (8,3), (4,4), (4,5), (3,4), (3,5), (8,6), (8,7), (8,8), (9,6), (9,7), (9,8),
+    #          (3,8), (3,9), (3,10), (3,11), (4,8), (4,9), (4,10), (4,11),}
 
-#     # map 8
-#     # ncols, nrows = 13, 10
-#     # start = (6,1)
+    # map_7 = map_builder(nrows, ncols, black, path, start)
 
-#     # path = {(8,1), (7,1), (6,1), (5,1), (4,1), (3,1), (2,1),
-#     #         (5,2), (5,3), (5,4),
-#     #         (2,4), (3,4), (4,4), (6,4), (7,4), (8,4),
-#     #         (8,5), (8,6),
-#     #         (7,6), (6,6), (5,6),
-#     #         (5,7), (5,7), (5,8), (5,9), (5,10), (5,11),
-#     #         (2,5), (2,6), (2,7), (2,8), (2,9), (2,10)}
+    # map 8
+    # ncols, nrows = 13, 10
+    # start = (6,1)
 
-#     # black = {(8,2), (2,2), (2,3), (3,3),
-#     #          (1,6), (1,7), (1,8), (1,9), (1,10), (3,6), (3,7), (3,8), (3,9), (3,10),
-#     #          (6,8), (6,9), (6,10), (6,11),
-#     #          (7,8), (7,9), (7,10), (7,11),
-#     #          (8,8), (8,9), (8,10), (8,11),}
+    # path = {(8,1), (7,1), (6,1), (5,1), (4,1), (3,1), (2,1),
+    #         (5,2), (5,3), (5,4),
+    #         (2,4), (3,4), (4,4), (6,4), (7,4), (8,4),
+    #         (8,5), (8,6),
+    #         (7,6), (6,6), (5,6),
+    #         (5,7), (5,7), (5,8), (5,9), (5,10), (5,11),
+    #         (2,5), (2,6), (2,7), (2,8), (2,9), (2,10)}
 
-#     # map_8 = map_builder(nrows, ncols, black, path, start)
+    # black = {(8,2), (2,2), (2,3), (3,3),
+    #          (1,6), (1,7), (1,8), (1,9), (1,10), (3,6), (3,7), (3,8), (3,9), (3,10),
+    #          (6,8), (6,9), (6,10), (6,11),
+    #          (7,8), (7,9), (7,10), (7,11),
+    #          (8,8), (8,9), (8,10), (8,11),}
 
-#     # --------------------------------------------------------------------
+    # map_8 = map_builder(nrows, ncols, black, path, start)
 
-#     visualize_decision_and_nodevalues(map_1, 0)
+    # --------------------------------------------------------------------
+
+    # visualize_decision_and_nodevalues(map_1, 0)
 
 map_1 = ((3, 3, 3, 3, 3, 3, 3, 3, 3),
           (3, 3, 3, 3, 0, 3, 0, 3, 3),

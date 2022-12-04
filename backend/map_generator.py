@@ -5,7 +5,12 @@ import numpy as np
 import copy
 import random
 
-def generate_spiral_maps(nmaps, nrows, ncols):
+# default values
+ROWS, COLS, BUFFER = 15, 15, 5
+INTERVAL_RANGE = (5, 10)
+OFFSHOOT_LENGTH_RANGE = (4, 9)
+
+def generate_spiral_maps(nmaps, nrows=ROWS, ncols=COLS, buffer=BUFFER, interval_range=INTERVAL_RANGE, offshoot_length_range=OFFSHOOT_LENGTH_RANGE):
     """
     Generates a set of trick maps that all follow the same path to the goal
     but have different extraneous paths.
@@ -19,10 +24,10 @@ def generate_spiral_maps(nmaps, nrows, ncols):
         A tuple of tuples (like the return of map_builder).
     """
     # just trying spiral for now
-    base_path = generate_spiral_base_path(nrows, ncols)
+    base_path, is_done = generate_spiral_base_path(nrows, ncols, buffer)
     trick_maps = []
     for _ in range(nmaps):
-        trick_maps.append(map_builder(generate_spiral_map_with_offshoots(nrows, ncols, base_path)))
+        trick_maps.append(generate_spiral_map_with_offshoots(base_path, is_done, nrows, ncols, interval_range, offshoot_length_range))
     return trick_maps
 
 
@@ -65,6 +70,7 @@ def generate_different_size_maps(map):
         * 6 is the path tile
         * 0 is the black tile
         * 3 is the wall tile
+        * 2 is the exit tile
 
     Returns:
         A list of maps where each map is a tuple of tuples
@@ -79,7 +85,7 @@ def generate_different_size_maps(map):
     return [map, twice_as_big_map, four_times_as_big_map]
 
 
-def generate_spiral_base_path(nrows, ncols, buffer=5):
+def generate_spiral_base_path(nrows=ROWS, ncols=COLS, buffer=BUFFER):
     """
     Generates a spiral path that all trick maps will follow. 
     
@@ -98,7 +104,7 @@ def generate_spiral_base_path(nrows, ncols, buffer=5):
         # buffer of one tile around the edge
         return 1 <= row < nrows - 1 and 1 <= col < ncols - 1
     
-    def is_done(row, col, direction):
+    def is_done(row, col, direction, buffer):
         """
         Checks to see whether or not any more tiles can be laid in the
         current direction given the buffer and the bounds.
@@ -107,40 +113,85 @@ def generate_spiral_base_path(nrows, ncols, buffer=5):
             if direction == 0: # right
                 if i != buffer - 1 and not in_bounds(row, col + i):
                     return True
-                if (row, col + i) in route:
+                if (row, col + i) in path:
                     return True
             elif direction == 1: # down
                 if i != buffer - 1 and not in_bounds(row + i, col):
                     return True
-                if (row + i, col) in route:
+                if (row + i, col) in path:
                     return True
             elif direction == 2: # left
                 if i != buffer - 1 and not in_bounds(row, col - i):
                     return True
-                if (row, col - i) in route:
+                if (row, col - i) in path:
                     return True
             elif direction == 3: # up
                 if i != buffer - 1 and not in_bounds(row - i, col):
                     return True
-                if (row - i, col) in route:
+                if (row - i, col) in path:
                     return True
             else:
                 raise ValueError("Invalid direction")
         return False
     
+    def get_neighbors(point, just_cross=True):
+        """
+        Returns a set of tuples representing the neighbors of a point.
+        """
+        row, col = point
+        if just_cross:
+            return {(row + 1, col), (row - 1, col), (row, col + 1), (row, col - 1)}
+        return {(row + 1, col + 1), (row + 1, col), (row + 1, col - 1), (row, col + 1), (row, col - 1), (row - 1, col + 1), (row - 1, col), (row - 1, col - 1)}
+    
+    def get_permutations(l):
+        """
+        Returns a list of all permutations of a list.
+        """
+        if len(l) == 0:
+            return []
+        if len(l) == 1:
+            return [l]
+        perms = []
+        for i in range(len(l)):
+            m = l[i]
+            rem = l[:i] + l[i+1:]
+            for p in get_permutations(rem):
+                perms.append([m] + p)
+        return perms
+    
+    def complete_the_square(point1, point2, point3):
+        """
+        Given three points, complete the square by adding the fourth point. If the
+        three points are not in a square, complete the square using the latter two
+        points.
+        """
+        # check for a corner
+        for permutation in get_permutations([point1, point2, point3]):
+            p1, p2, p3 = permutation
+            r1, c1 = p1
+            r2, c2 = p2
+            r3, c3 = p3
+            if p1 in get_neighbors(p3) and p2 in get_neighbors(p3) and p1 in get_neighbors(p2, just_cross=False):
+                return [(r1 + r2 - r3, c1 + c2 - c3)]
+        
+        # no corner
+        if point2[0] == point3[0]:
+            return [(point2[0]+1, point2[1]), (point3[0]+1, point3[1])]
+        return [(point2[0], point2[1]+1), (point3[0], point3[1]+1)]            
+        
+    
     direction = 0 # 0 = right, 1 = down, 2 = left, 3 = up
     black, path, start = [], [], (1, 1)
     row, col = start
-    route = []
         
     while True:
         # generate a line of black squares until we run out of space
-        if is_done(row, col, direction):
+        if is_done(row, col, direction, buffer):
             break
 
         while in_bounds(row, col):
             # add current coordinates
-            route.append((row, col))
+            path.append((row, col))
             
             # proceed in the same direction if possible
             if direction == 0: # right
@@ -154,13 +205,15 @@ def generate_spiral_base_path(nrows, ncols, buffer=5):
             else:
                 raise Exception("Invalid direction")
             
-            if is_done(row, col, direction):
+            if is_done(row, col, direction, buffer):
                 break
 
         direction = (direction + 1) % 4
         
-    path = [coord for coord in route if coord[0] == 1]
-    black = [coord for coord in route if coord[0] != 1]
+    black = path[-3:]
+    black.extend(complete_the_square(*black))
+    goal = random.choice(black)
+    path = [coord for coord in path if coord not in black]
     
     # uncomment to visualize
     # visualize_maze(map_builder(nrows, ncols, black, path, start))
@@ -169,7 +222,7 @@ def generate_spiral_base_path(nrows, ncols, buffer=5):
     return (black, path, start), is_done
     
 
-def generate_spiral_map_with_offshoots(nrows, ncols, base_path, is_done, interval_range=(5, 10), offshoot_length_range=(4, 8)):
+def generate_spiral_map_with_offshoots(base_path, is_done, nrows=ROWS, ncols=COLS, interval_range=INTERVAL_RANGE, offshoot_length_range=OFFSHOOT_LENGTH_RANGE):
     """
     Generates a map with the same path as the base path but with
     a few offshoot paths that don't lead to the goal.
@@ -212,9 +265,9 @@ def generate_spiral_map_with_offshoots(nrows, ncols, base_path, is_done, interva
         else:
             raise Exception("Invalid direction")
         return row, col
-            
     
     black, path, start = base_path
+    black, path = black.copy(), path.copy()
     route = path + black
     steps_since_last_offshoot = 0
 
@@ -244,7 +297,7 @@ def generate_spiral_map_with_offshoots(nrows, ncols, base_path, is_done, interva
                 direction = (direction + 1) % 4
                 for j in range(offshoot_length):
                     row, col = move_in_direction(row, col, direction)
-                    if (is_done(row, col, direction)) or j == offshoot_length - 1:
+                    if (is_done(row, col, direction, buffer=2)) or j == offshoot_length - 1:
                         if len(offshoot) >= 3:
                             offshoot_candidates.append(offshoot)
                         break
@@ -265,12 +318,12 @@ def generate_spiral_map_with_offshoots(nrows, ncols, base_path, is_done, interva
     return map_builder(nrows, ncols, black, path, start)
 
 if __name__ == "__main__":
+    # pass
     # testing area
-    rows, cols, buffer = 15, 15, 5
-    interval_range = (5, 10)
-    offshoot_length_range = (4, 8)
-    # base_path, is_done = generate_spiral_base_path(rows, cols, buffer)
-    # generate_spiral_map_with_offshoots(rows, cols, base_path, is_done, interval_range, offshoot_length_range)
+    # generate_spiral_maps(1)
+    for maze in generate_spiral_maps(5):
+        visualize_maze(maze)
+        plt.show()
 
 
     # map_1 = ((3, 3, 3, 3, 3, 3, 3, 3, 3),
