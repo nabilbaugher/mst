@@ -48,36 +48,36 @@ def best_path(map_, parameters, raw_nodevalue_func):
 
     """
     
-    TREE = map2tree(map_) 
-    value_summary = node_values(map_, parameters, raw_nodevalue_func)
+    TREE = map2tree(map_)  #Generate tree
+    value_summary = node_values(map_, parameters, raw_nodevalue_func) #Get all of our values
     
-    nid = TREE[0]
     node = 0
     
-    path = [node] # list of node ids
+    path = [node] # list of node ids leading down our best past
 
     while True:
 
-        # break if at leaf node
-        print(nid)
+        #If no children, then we're finished! Return this path
         if not TREE[node]['children']:
             return path
 
-        # non-decision (num(children) <= 1) nodes just gets added
-        if len(TREE[node]['children']) == 1:
-            path.append(node)
-            print(TREE[node])
-            node = list(TREE[node]['children'])[0]
-            continue
+        
+        children = TREE[node]['children'] #Get children
+        
+        #If one child, then we don't have to make a choice: just add the child and move on.
+        if len(children) == 1:
+            path.append(node) #Add current node
+             
+            node = list(children)[0] #Grab the only child
+            continue 
 
-        # find best child
-        #print(value_summary)
+        #Our actor will take the optimal path
+        #So, which child has the larges t
         best_child = max([ (value, cid) for cid,value in value_summary[node][1].items() ])[1]
-        # update node
-        node = best_child
 
-        # update path
-        path.append(node)
+        path.append(best_child)
+        
+        node = best_child
 
 
 def map_visualizer(map_, node=None):
