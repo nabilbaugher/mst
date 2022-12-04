@@ -4,7 +4,7 @@ Zoe's github (zsheill7)
 
 Main table:
 
-tester_id: text
+tester_id: uuid
 created_at: timestamp
 keystroke_sequences: json
 
@@ -15,7 +15,7 @@ in 10 different keystroke sequences
 
 {
     1: ["left", "right", "up", "down", "left", "win"],
-    2: ["right, "up", "down"],
+    2: ["right", "up", "down"],
     3: ["left", "down", "right", "win"]
 }
 

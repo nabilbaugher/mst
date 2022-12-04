@@ -4,6 +4,9 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
+import { createClient } from '@supabase/supabase-js'
+import uuid from "uuid";
+
 // const root = ReactDOM.createRoot(document.getElementById('root'));
 // root.render(
 //   <React.StrictMode>
@@ -15,6 +18,8 @@ import reportWebVitals from './reportWebVitals';
 // to log results (for example: reportWebVitals(console.log))
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
 reportWebVitals();
+
+
 
 
 class GridSystem {
@@ -32,6 +37,12 @@ class GridSystem {
 				}
 			}
 		}
+		// Supabase
+		const supabaseUrl = process.env.SUPABASE_URL
+		const supabaseKey = process.env.SUPABASE_KEY
+		const supabase = createClient(supabaseUrl, supabaseKey)
+
+		// Random supabase test
 
 		this.uiContext = this.#getContext(420, 580, "#000");
 		this.outlineContext = this.#getContext(0, 0, "#444");
@@ -44,6 +55,38 @@ class GridSystem {
 		this.player_won = false
 
 		document.addEventListener("keydown", this.#movePlayer);
+	}
+
+	async insertEntry({tester_id, created_at, keystroke_sequences}) {
+		try{
+			setLoading(True)
+			const update = {
+				tester_id: tester_id,
+				created_at,
+				keystroke_sequences
+			}
+			const { error } = await supabase
+				.from('keystroke_sequence')
+				.insert({ 
+					tester_id: uuid.v4(), 
+					created_at: Date.now(), 
+					keystroke_sequences: {
+						1: ["left", "right", "up", "down", "left", "win"],
+						2: ["right", "up", "down"],
+						3: ["left", "down", "right", "win"]
+				}
+			})
+
+			if (error) {
+				throw error
+			}
+		} catch (error) {
+			alert(error.message)
+		} finally {
+			setLoading(False)
+		}
+
+		
 	}
 
 	#isValidMove(x, y) {
