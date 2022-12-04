@@ -11,14 +11,8 @@ from collections import deque
 
 pp = pprint.PrettyPrinter(compact=False, width=90)
 
-def memoize(function):
-    """ ram cacher """
-    memo = {}
-    def wrapper(*args):
-        if args not in memo:
-            memo[args] = function(*args)
-        return memo[args]
-    return wrapper
+
+
 
 
 # ----------------------
@@ -418,6 +412,16 @@ def possible_paths(map_, pos):
     return paths
 
 
+
+###Used so we don't have to re-calculate the same tree multiple times
+def memoize(function):
+    """ ram cacher """
+    memo = {}
+    def wrapper(*args):
+        if args not in memo:
+            memo[args] = function(*args)
+        return memo[args]
+    return wrapper
 
 #Use memoize to cache results of map2tree, save for re-use
 @memoize

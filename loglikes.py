@@ -19,23 +19,62 @@ map_1 = ((3, 3, 3, 3, 3, 3, 3, 3, 3),
          (3, 3, 0, 0, 3, 3, 3, 3, 3),
          (3, 3, 3, 3, 3, 3, 3, 3, 3),)
 
+###Test tree: map_1
 TREE= mst_prototype.map2tree(map_1)
 
-with open(f'__experiment_1/parsed_data/subject_decisions.pickle', 'rb') as handle:
-    # {sid: {world: {'nodes': [], 'path': []}}}
-    DECISIONS = pickle.load(handle)
+print(TREE)
 
+"""
+Some representation of how the subjects chose to act
+
+THIS MAY BE USEFUL REFERENCE WHEN STORING DATA FROM THE EXPERIMENTS
+"""
+
+# {subject:
+#    {map:
+#         {'nodes':[]}, #Which tree nodes were 
+#         {'path': []}
+#         }}
+
+###Assumes that we have a pickle file
+# with open(f'__experiment_1/parsed_data/subject_decisions.pickle', 'rb') as handle:
+     
+#     DECISIONS = pickle.load(handle)
+
+
+"""
+decisions_list = [(world, nid), ...]
+return average loglike for sid for all decisions if world is None
+if world is specified, return average loglike for decisions made in that world
+"""
+
+###Experimental data we don't have
+
+# with open(f'__experiment_1/node_values/{model_name}/node_values_{params}.pickle', 'rb') as handle:
+#     # {map: {pid: {nid: node value}}}
+#     node_values = pickle.load(handle)
 
 def loglike(params, model_name, decisions_list):
     """
-    decisions_list = [(world, nid), ...]
-    return average loglike for sid for all decisions is world is None
-    if world is specified, return average loglike for decisions made in that world
-    """
+    
 
-    with open(f'__experiment_1/node_values/{model_name}/node_values_{params}.pickle', 'rb') as handle:
-        # {world: {pid: {nid: node value}}}
-        node_values = pickle.load(handle)
+    Parameters
+    ----------
+    params : TYPE
+        DESCRIPTION.
+    model_name : TYPE
+        DESCRIPTION.
+    decisions_list : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    TYPE
+        DESCRIPTION.
+
+    """
+    
+    
 
     cum_loglike = 0
 
