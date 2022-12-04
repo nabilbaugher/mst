@@ -29,6 +29,8 @@ def best_path(map_, parameters, raw_nodevalue_func):
             -tuple of tuples    has length = nrows, 
             -each tuple of ints has length = ncols.
             
+            Our "maze" the player is moving through.
+            
     parameters : tuple of three floats.
                  parameters to help calculate values. 
                  
@@ -111,6 +113,8 @@ def visualize_maze(map_, ax=None):
             -tuple of tuples    has length = nrows, 
             -each tuple of ints has length = ncols.
             
+            Our "maze" the player is moving through.
+            
     ax : matplotlib.axes._subplots.AxesSubplot, optional
         The plot on which we will be drawing our map.
 
@@ -168,6 +172,8 @@ def visualize_path(map_, path, ax):
             -tuple of tuples    has length = nrows, 
             -each tuple of ints has length = ncols.
             
+            Our "maze" the player is moving through.
+            
     path : list of ints
         List of nodes, from start to end of the path.
         
@@ -207,15 +213,25 @@ def visualize_path(map_, path, ax):
     
     
 
+eu_du_pwu = [('Expected_Utility', raw_nodevalue_comb, (1,1,1)),
+             ('Discounted_Utillity', raw_nodevalue_comb, (1,1,1)),
+             ('Probability_Weighted', raw_nodevalue_comb, (1,1,1))]
 
-def visualize_juxtaposed_best_paths(map_):
+def visualize_juxtaposed_best_paths(map_, raw_nodevalue_func_and_params= eu_du_pwu):
     """
-    
+    This function allows us to visually compare the "best paths" chosen by multiple different
+    value functions.
 
     Parameters
     ----------
-    map_ : TYPE
-        DESCRIPTION.
+    map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
+            -tuple of tuples    has length = nrows, 
+            -each tuple of ints has length = ncols.
+            
+            Our "maze" the player is moving through.
+        
+    raw_nodevalue_func_and_param: list of tuples ( str, function, tuple(float, float float) )
+            -list of tuples: each tuple represents a different way to measure the best value 
 
     Returns
     -------
@@ -226,9 +242,6 @@ def visualize_juxtaposed_best_paths(map_):
     _, axs = plt.subplots(1, 3)
     axs = axs.flat
 
-    raw_nodevalue_func_and_params = [('Expected_Utility', raw_nodevalue_comb, (1,1,1)),
-                                     ('Discounted_Utillity', raw_nodevalue_comb, (1,1,1)),
-                                     ('Probability_Weighted', raw_nodevalue_comb, (1,1,1))]
 
     for ax, (model_name, raw_nodevalue_func, params) in zip(axs, raw_nodevalue_func_and_params):
 
