@@ -166,7 +166,7 @@ def visualize_maze(map_, ax=None):
     #Rows count going down: we have to reverse our map order.
     maze1=map_[::-1]
     
-    pp.pprint(maze1)
+    #pp.pprint(maze1)
 
     #Gather color map
     cmap = colors.ListedColormap(['#9c9c9c', 'white', '#d074a4', '#b0943d', 'white', '#a1c38c', 'white', '#f5f5dc'])
