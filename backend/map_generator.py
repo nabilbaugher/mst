@@ -1,4 +1,6 @@
 from mst_prototype import map_builder
+import numpy as np
+import copy
 
 def generate_trick_maps(nmaps, nrows, ncols):
     """
@@ -20,16 +22,39 @@ def generate_trick_maps(nmaps, nrows, ncols):
         trick_maps.append(map_builder(generate_trick_map(nrows, ncols, base_path)))
     return trick_maps
 
+
+def double_map_size(map):
+    """
+    Helper function for generate_two_bigger_maps
+
+    Given a map, a tuple of tuples, returns a map that is twice the size by inserting
+    a new row every other row and a new column every other column
+    """
+    double_size_map = [list(x) for x in map] #list of lists
+
+    for row_index in range(len(map) - 1, -1, -1): # Go backward, insert a new row
+        # If a row contains 5, the starting location, replace it with a path value 6
+        copied_list = [item if item != 5 else 6 for item in list(map[row_index])]
+        double_size_map.insert(row_index, copied_list)
+
+    np_array = np.array(double_size_map, dtype=object)
+    for col_index in range(len(map[0]) - 1, -1, -1):
+        copied_list = [item if item != 5 else 6 for item in list(np_array[:, col_index])]
+        
+        np_array = np.insert(np_array, col_index, copied_list, axis=1)
+
+    return tuple(tuple(x) for x in np_array)
+
 def generate_two_bigger_maps(map):
     """
-    Given a map with nrows rows and ncolumns columns, create a new map that is a different size
+    Given a map with nrows rows and ncolumns columns, create 2 new maps that are larger
 
     To keep it simple, we are only generating 
-        * 1 map that is double the size of the original map
-        * 1 map that is 4 times the size of the original map
+        * 1 map that is ~double the size of the original map
+        * 1 map that is ~4 times the size of the original map
 
     We are making a bigger map by copying every column and row
-        (Except if a row or column contains 5, the starting space)
+        (If a row or column contains a 5, we replace that 5 with a path tile, 6
 
     Args:
         map (tuple of tuples): A grid where the number in each space represents:
@@ -42,9 +67,12 @@ def generate_two_bigger_maps(map):
         A list of maps where each map is a tuple of tuples
     """
 
-    nrows = len(map)
-    ncols = len(map[0])
+    # Make a copy of the entire map and insert every other row or every other column
 
+    twice_as_big_map = double_map_size(map)
+    four_times_as_big_map = double_map_size(copy.deepcopy(twice_as_big_map))
+
+    return [twice_as_big_map, four_times_as_big_map]
 
 
 def generate_spiral_base_path(nrows, ncols):
