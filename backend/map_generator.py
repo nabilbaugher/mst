@@ -70,6 +70,7 @@ def generate_different_size_maps(map):
         * 6 is the path tile
         * 0 is the black tile
         * 3 is the wall tile
+        * 2 is the exit tile
 
     Returns:
         A list of maps where each map is a tuple of tuples

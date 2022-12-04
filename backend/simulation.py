@@ -12,7 +12,6 @@ from mst_prototype import raw_nodevalue_comb
 
 pp = pprint.PrettyPrinter(compact=False)
 
-import models
 
 
 """
@@ -28,7 +27,7 @@ A short summary of the various functions in this file:
         Draws a particular path on top of the matplotlib map
         *Uses mst_prototype.map2tree
         
-    visualize_juxtaposed_best_paths(map_, raw_nodevalue_func_and_params= eu_du_pwu): return None
+    visualize_juxtaposed_best_paths(map_, models= eu_du_pwu): return None
         Draw the best path for multiple different models, to compare.
         *Uses best_path, visualize_maze, visualize_path
         
@@ -41,7 +40,7 @@ A short summary of the various functions in this file:
 #     TREE = pickle.load(handle)
 
 
-def best_path(map_, params, raw_nodevalue_func):
+def best_path(map_, node_params, parent_params, raw_nodevalue_func):
     """
     Finds the best path, based on our nodevalue function and parameters.
 
@@ -73,7 +72,7 @@ def best_path(map_, params, raw_nodevalue_func):
     """
     
     TREE = map2tree(map_)  #Generate tree
-    value_summary = node_values(map_, params, raw_nodevalue_func) #Get all of our values
+    value_summary = node_values(map_, node_params, parent_params, raw_nodevalue_func) #Get all of our values
     
     node = 0
     
@@ -234,13 +233,13 @@ def visualize_path(map_, path, ax):
     ax.legend(loc='upper left', bbox_to_anchor=(0,-0.1)) #Add legend
     
 
-###(tau, gamma, beta)
+###(gamma, beta, tau) --> ( (gamma, beta), (tau,) )
 
-eu_du_pwu = [('Expected_Utility', raw_nodevalue_comb, (1,1,1)),
-             ('Discounted_Utillity', raw_nodevalue_comb, (1,1,1)),
-             ('Probability_Weighted', raw_nodevalue_comb, (1,1,1))]
+eu_du_pwu = [('Expected_Utility', raw_nodevalue_comb,     (1,1), (1,)),
+             ('Discounted_Utillity', raw_nodevalue_comb,  (1,1), (1,)),
+             ('Probability_Weighted', raw_nodevalue_comb, (1,1), (1,))]
 
-def visualize_juxtaposed_best_paths(map_, raw_nodevalue_func_and_params= eu_du_pwu):
+def visualize_juxtaposed_best_paths(map_, models= eu_du_pwu):
     """
     This function allows us to visually compare the "best paths" chosen by multiple different
     value functions.
@@ -253,7 +252,7 @@ def visualize_juxtaposed_best_paths(map_, raw_nodevalue_func_and_params= eu_du_p
             
             Our "maze" the player is moving through.
         
-    raw_nodevalue_func_and_param: list of tuples ( str, function, tuple(float, float float) )
+    models: list of tuples ( str, function, tuple(float, float float) )
     
             -list of tuples: each tuple represents a different way to measure the best value 
                 -str: The name of the value function approach
@@ -270,16 +269,16 @@ def visualize_juxtaposed_best_paths(map_, raw_nodevalue_func_and_params= eu_du_p
     None.
 
     """
-    num_funcs = len(raw_nodevalue_func_and_params)
+    num_funcs = len(models)
     #Empty plot to draw on
     _, axs = plt.subplots(1, num_funcs)
     axs = axs.flat
 
     #Each value function gets draw on its own map
-    for ax, (model_name, raw_nodevalue_func, params) in zip(axs, raw_nodevalue_func_and_params):
+    for ax, (model_name, raw_nodevalue_func, node_params, parent_params) in zip(axs, models):
         
         #Get the best path
-        path = best_path(map_, params, raw_nodevalue_func )
+        path = best_path(map_, node_params, parent_params, raw_nodevalue_func )
         #Draw our maze
         visualize_maze(map_, ax)
         #Draw the path on our maze
