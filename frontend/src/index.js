@@ -5,7 +5,13 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 
 import { createClient } from '@supabase/supabase-js'
-import uuid from "uuid";
+import {v1 as uuid} from "uuid"; 
+
+
+// Supabase
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL
+const supabaseKey = process.env.REACT_APP_SUPABASE_KEY
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 // const root = ReactDOM.createRoot(document.getElementById('root'));
 // root.render(
@@ -37,10 +43,16 @@ class GridSystem {
 				}
 			}
 		}
-		// Supabase
-		const supabaseUrl = process.env.SUPABASE_URL
-		const supabaseKey = process.env.SUPABASE_KEY
-		const supabase = createClient(supabaseUrl, supabaseKey)
+
+		this.insertEntry({ 
+			tester_id: uuid(), 
+			created_at: String(Date.now()), 
+			keystroke_sequences: {
+				1: ["left", "right", "up", "down", "left", "win"],
+				2: ["right", "up", "down"],
+				3: ["left", "down", "right", "win"]
+		}})
+		
 
 		// Random supabase test
 
@@ -59,23 +71,16 @@ class GridSystem {
 
 	async insertEntry({tester_id, created_at, keystroke_sequences}) {
 		try{
-			setLoading(True)
+			//setLoading(True)
 			const update = {
 				tester_id: tester_id,
 				created_at,
 				keystroke_sequences
 			}
+
 			const { error } = await supabase
 				.from('keystroke_sequence')
-				.insert({ 
-					tester_id: uuid.v4(), 
-					created_at: Date.now(), 
-					keystroke_sequences: {
-						1: ["left", "right", "up", "down", "left", "win"],
-						2: ["right", "up", "down"],
-						3: ["left", "down", "right", "win"]
-				}
-			})
+				.insert(update)
 
 			if (error) {
 				throw error
@@ -83,10 +88,9 @@ class GridSystem {
 		} catch (error) {
 			alert(error.message)
 		} finally {
-			setLoading(False)
+			console.log("Done")
+			//setLoading(False)
 		}
-
-		
 	}
 
 	#isValidMove(x, y) {
