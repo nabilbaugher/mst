@@ -177,7 +177,7 @@ def visualize_path(map_, path, ax):
     Returns
     -------
     None.
-
+    
     """
     #Ignore first position on path
     path=path[1:]
@@ -188,16 +188,24 @@ def visualize_path(map_, path, ax):
         stdev = .025 * (max(arr) - min(arr))
         return arr + np.random.randn(len(arr)) * stdev
 
-    # draw paths
+    #Get a tree
     TREE=map2tree(map_)
-    #print(TREE)
-    for nid in path[1:]:
-        c, r = zip(*[(c + 0.5, nrows - r - 0.5) for r,c in TREE[nid]['path_from_par']])
-        c, r = jitter(c), jitter(r)
-        ax.plot(c, r, 'o--',  markersize=4, label=nid)
-        # ax.plot(x[0], y[0], 's', markersize=8, color='purple')
+    
+    
+    for node in path[1:]: #Go through each node
+    
+        parent_to_child_path = TREE[node]['path_from_par']
+    
+        c, r = zip(*[ (c + 0.5, nrows - r - 0.5)  #Offset by 0.5 centers our path lines on each grid square
+                     for r,c in parent_to_child_path]) #Each step from the parent to child
+        
+        c, r = jitter(c), jitter(r) #Make each step a little wobbly for visuals
+        
+        ax.plot(c, r, 'o--',  markersize=4, label=node) #Draw the path from parent to child
 
-    ax.legend(loc='upper left', bbox_to_anchor=(0,-0.1))
+    ax.legend(loc='upper left', bbox_to_anchor=(0,-0.1)) #Add legend
+    
+    
 
 
 def visualize_juxtaposed_best_paths(map_):
@@ -206,7 +214,7 @@ def visualize_juxtaposed_best_paths(map_):
 
     Parameters
     ----------
-    maze : TYPE
+    map_ : TYPE
         DESCRIPTION.
 
     Returns
