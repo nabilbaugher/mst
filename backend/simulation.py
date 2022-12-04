@@ -8,6 +8,7 @@ import itertools
 
 from mst_prototype import map2tree, node_values, map_builder
 from mst_prototype import raw_nodevalue_comb
+# from map_generator import generate_spiral_maps
 
 pp = pprint.PrettyPrinter(compact=False)
 
@@ -383,4 +384,4 @@ if __name__ == "__main__":
            (3,0, 0, 3, 3, 0, 0, 3, 3, 3, 3),
            (3,3,3,3,3,3,3,3,3,3,3),)
 
-    visualize_juxtaposed_best_paths(Maze1)
+    visualize_juxtaposed_best_paths(generate_spiral_maps(1)[0])
