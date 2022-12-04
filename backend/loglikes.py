@@ -49,15 +49,6 @@ THIS MAY BE USEFUL REFERENCE WHEN STORING DATA FROM THE EXPERIMENTS
 #     # {map: {pid: {nid: node value}}}
 #     node_values = pickle.load(handle)
 
-def compute_nll():
-    """
-    """
-
-"""
-decisions_list = [(world, nid), ...]
-return average loglike for sid for all decisions if world is None
-if world is specified, return average loglike for decisions made in that world
-"""
 
 def avg_log_likelihood_decisions(decisions_list,  params, raw_nodevalue_func=raw_nodevalue_comb ):
     """
