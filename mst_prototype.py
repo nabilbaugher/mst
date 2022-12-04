@@ -377,11 +377,10 @@ def possible_paths(map_, pos):
     
     #BFS is implemented by the agenda. 
     # agenda = [ [pos] ]
-    agenda = deque([pos])
+    agenda = deque([[pos]])
     paths = []
 
     while agenda: #Still agendas left - incomplete paths.
-
         path = agenda.popleft() #Get top of agenda
         r_, c_ = path[-1] #Current position
 
