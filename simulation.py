@@ -61,8 +61,8 @@ def best_path(map_, parameters, raw_nodevalue_func):
         if not TREE[node]['children']:
             return path
 
-        
-        children = TREE[node]['children'] #Get children
+        #Get children
+        children = TREE[node]['children'] 
         
         #If one child, then we don't have to make a choice: just add the child and move on.
         if len(children) == 1:
@@ -72,9 +72,15 @@ def best_path(map_, parameters, raw_nodevalue_func):
             continue 
 
         #Our actor will take the optimal path
-        #So, which child has the larges t
-        best_child = max([ (value, cid) for cid,value in value_summary[node][1].items() ])[1]
-
+        #So, which child has the largest value?
+        
+        child_and_value = value_summary[node].items() #Get all children and their values
+        
+        #Since value is first in tuple, it will be prioritized.
+        best_child_and_value = max([ (value, cid) for cid,value in child_and_value ])
+        #Remove value, only want the node
+        best_child = best_child_and_value[1]
+        
         path.append(best_child)
         
         node = best_child

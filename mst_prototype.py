@@ -891,7 +891,7 @@ def node_values(map_, parameters, raw_nodevalue_func=raw_nodevalue_comb):
         
         
         #Store these softmax-ed values
-        values_summary[node][1] = {child_node: val for child_node,val in zip(children, values)}
+        values_summary[node] = {child_node: val for child_node,val in zip(children, values)}
         #Why are we indexing 1? Unknown
 
     return values_summary
