@@ -181,7 +181,7 @@ def generate_spiral_map_with_offshoots(nrows, ncols, base_path, is_done, interva
             in the form (black, path, start)
     """
     
-    def offshoot_directions(row, col):
+    def get_offshoot_directions(row, col):
         """
         Given the proposed start point of an offshoot, return the possible
         directions for the offshoot to begin. 
@@ -217,50 +217,60 @@ def generate_spiral_map_with_offshoots(nrows, ncols, base_path, is_done, interva
     black, path, start = base_path
     route = path + black
     steps_since_last_offshoot = 0
-    # not done
-    # for i in range(len(route)):
-    #     if steps_since_last_offshoot >= random.randint(*interval_range):
-    #         # choose length and direction of offshoot
-    #         offshoot_length = random.randint(*offshoot_length_range)
-    #         offshoot_directions = offshoot_directions(*route[i])
+
+    for i in range(len(route)):
+        if steps_since_last_offshoot >= random.randint(*interval_range):
+            # choose length and direction of offshoot
+            offshoot_length = random.randint(*offshoot_length_range)
+            offshoot_directions = get_offshoot_directions(*route[i])
             
-    #         # no possible offshoot here, so continue
-    #         if len(offshoot_directions) == 0:
-    #             continue
+            # no possible offshoot here, so continue
+            if len(offshoot_directions) == 0:
+                continue
             
-    #         # try all the offshoot candidates
-    #         for direction in offshoot_directions:
-    #             offshoot = []
+            # try all the offshoot candidates
+            offshoot_candidates = []
+            for direction in offshoot_directions:
+                offshoot = []
                 
-    #             # initialize the offshoot in the chosen direction
-    #             row, col = route[i]
-    #             row, col = move_in_direction(row, col, direction)
-    #             offshoot.append((row, col))
-    #             row, col = move_in_direction(row, col, direction)
-    #             offshoot.append((row, col))
+                # initialize the offshoot in the chosen direction
+                row, col = route[i]
+                row, col = move_in_direction(row, col, direction)
+                offshoot.append((row, col))
+                row, col = move_in_direction(row, col, direction)
+                offshoot.append((row, col))
             
-    #             # extend the offshoot in a perpendicular direction
-    #             direction = (direction + 1) % 4
-    #             for j in range(offshoot_length):
-    #                 row, col = move_in_direction(row, col, direction)
-    #                 if (is_done(row, col, direction)):
-    #                     if len(offshoot >= 3):
-                            
-    #                 offshoot.append((row, col))
-    #         steps_since_last_offshoot = 0
+                # extend the offshoot in a perpendicular direction
+                direction = (direction + 1) % 4
+                for j in range(offshoot_length):
+                    row, col = move_in_direction(row, col, direction)
+                    if (is_done(row, col, direction)) or j == offshoot_length - 1:
+                        if len(offshoot) >= 3:
+                            offshoot_candidates.append(offshoot)
+                        break
+                    offshoot.append((row, col))
+            
+            if len(offshoot_candidates) == 0:
+                continue
+            
+            black.extend(random.choice(offshoot_candidates))
+            steps_since_last_offshoot = 0
         
-    #     steps_since_last_offshoot += 1
+        steps_since_last_offshoot += 1
     
     # uncomment to visualize
-    visualize_maze(map_builder(nrows, ncols, black, path, start))
-    plt.show()
+    # visualize_maze(map_builder(nrows, ncols, black, path, start))
+    # plt.show()
     
     return map_builder(nrows, ncols, black, path, start)
 
 if __name__ == "__main__":
     # testing area
-    # base_path, is_done = generate_spiral_base_path(15, 15)
-    # generate_spiral_map_with_offshoots(15, 15, base_path, is_done)
+    rows, cols, buffer = 15, 15, 5
+    interval_range = (5, 10)
+    offshoot_length_range = (4, 8)
+    # base_path, is_done = generate_spiral_base_path(rows, cols, buffer)
+    # generate_spiral_map_with_offshoots(rows, cols, base_path, is_done, interval_range, offshoot_length_range)
 
 
     # map_1 = ((3, 3, 3, 3, 3, 3, 3, 3, 3),
