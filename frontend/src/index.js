@@ -44,14 +44,14 @@ class GridSystem {
 			}
 		}
 
-		this.insertEntry({ 
-			tester_id: uuid(), 
-			created_at: String(Date.now()), 
-			keystroke_sequences: {
-				1: ["left", "right", "up", "down", "left", "win"],
-				2: ["right", "up", "down"],
-				3: ["left", "down", "right", "win"]
-		}})
+		// this.insertEntry({ 
+		// 	tester_id: uuid(), 
+		// 	created_at: String(Date.now()), 
+		// 	keystroke_sequences: {
+		// 		1: ["left", "right", "up", "down", "left", "win"],
+		// 		2: ["right", "up", "down"],
+		// 		3: ["left", "down", "right", "win"]
+		// }})
 		
 
 		// Random supabase test
@@ -64,6 +64,8 @@ class GridSystem {
 		this.player = { x: playerX, y: playerY, color: "orange" };
 		this.matrix[playerY][playerX] = 2;
 
+		this.current_user_id = uuid()
+		this.current_keystroke_sequence = []
 		this.player_won = false
 
 		document.addEventListener("keydown", this.#movePlayer);
@@ -123,6 +125,7 @@ class GridSystem {
 			 	this.#updateMatrix(this.player.y, this.player.x - 1, 8);
 			 }
 			 this.player.x --;
+			 this.current_keystroke_sequence.push("left")
 			 this.render();
 		 }
 		} else if (keyCode === 39) {
@@ -133,6 +136,7 @@ class GridSystem {
  			 		this.#updateMatrix(this.player.y, this.player.x + 1, 8);
 				}
 				this.player.x ++;
+				this.current_keystroke_sequence.push("right")
 				this.render();
 			}
 		} else if (keyCode === 38) {
@@ -143,6 +147,7 @@ class GridSystem {
  			 		this.#updateMatrix(this.player.y - 1, this.player.x, 8);
 				}
 				this.player.y --;
+				this.current_keystroke_sequence.push("up")
 				this.render();
 			}
 		} else if (keyCode === 40) {
@@ -153,6 +158,7 @@ class GridSystem {
 					this.#updateMatrix(this.player.y + 1, this.player.x, 8);
 				}
 				this.player.y ++;
+				this.current_keystroke_sequence.push("down")
 				this.render();
 			}
 		}
@@ -178,6 +184,16 @@ class GridSystem {
 		const center = this.#getCenter(w, h);
 		this.canvas.style.marginLeft = center.x
 		this.canvas.style.marginTop = center.y;
+
+
+
+		// // Create button too
+		// let btn = document.createElement("button");
+		// btn.innerHTML = "Next trial"
+		// // btn.style.position = "absolute";
+		// btn.style.top = this.canvas.offsetHeight + this.canvas.height;
+		// document.body.appendChild(btn)
+
 		document.body.appendChild(this.canvas);
 
 		return this.context;
@@ -216,12 +232,27 @@ class GridSystem {
 			}
 		}
 
+		let btn = document.createElement("button");
+		btn.innerHTML = "Next trial"
+		btn.style.position = "absolute";
+		btn.style.left = "50%";
+		btn.style.top = "75%";
+		document.body.appendChild(btn)
+
 		
 
 		this.uiContext.font = "20px Courier";
 		this.uiContext.fillStyle = "white";
 
 		if (this.player_won == true) {
+			// Upload keystroke data
+			this.insertEntry({ 
+				tester_id: this.current_user_id, 
+				created_at: String(Date.now()), 
+				keystroke_sequences: {
+					1: this.current_keystroke_sequence
+			}})
+
 			this.uiContext.fillText("You win!!", 20, 30);
 		}
 		// else {
