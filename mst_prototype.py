@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import random
 import pprint
+from collections import deque
 
 pp = pprint.PrettyPrinter(compact=False, width=90)
 
@@ -371,12 +372,13 @@ def possible_paths(map_, pos):
     nrows, ncols = len(map_), len(map_[0])
     
     #BFS is implemented by the agenda. 
-    agenda = [ [pos] ]
+    # agenda = [ [pos] ]
+    agenda = deque([pos])
     paths = []
 
     while agenda: #Still agendas left - incomplete paths.
 
-        path = agenda.pop(0) #Get top of agenda
+        path = agenda.popleft() #Get top of agenda
         r_, c_ = path[-1] #Current position
 
         for rr, cc in ((0 ,1), (0 ,-1), (1 ,0), (-1 ,0)): #Possible movement directions
@@ -456,12 +458,13 @@ def map2tree(map_):
                 'pid': None}}           #Parent ID: the root node has no parent
 
     #BFS in progress
-    agenda = [(0, map_)] #(node, current map)
+    # agenda = [(0, map_)] #(node, current map)
+    agenda = deque([(0, map_)]) #(node, current map)
     #print('1', tree)
     
     while agenda: # in each loop, find and append children
 
-        node, updated_map = agenda.pop(0) #Grab first element
+        node, updated_map = agenda.popleft() #Grab first element
         pos = tree[node]['pos'] #Current position
         
         #print('PPPPP', possible_paths(updated_map, pos)) #What next moves are available?
