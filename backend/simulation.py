@@ -383,5 +383,7 @@ if __name__ == "__main__":
            (3,2, 0, 3, 3, 0, 0, 3, 3, 3, 3),
            (3,0, 0, 3, 3, 0, 0, 3, 3, 3, 3),
            (3,3,3,3,3,3,3,3,3,3,3),)
+    
+    visualize_juxtaposed_best_paths(Maze1)
 
-    visualize_juxtaposed_best_paths(generate_spiral_maps(1)[0])
+    #visualize_juxtaposed_best_paths(generate_spiral_maps(1)[0])

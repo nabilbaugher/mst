@@ -94,7 +94,7 @@ Overall representation:
     
 """
 
-def map_builder(nrows, ncols, black, path, start):
+def map_builder(nrows, ncols, black, path, start, exit_=None):
     """
     This function turns a description of a map into its representation: a tuple of tuples, representing a grid.
     Each position on this grid is a "tile".
@@ -110,6 +110,9 @@ def map_builder(nrows, ncols, black, path, start):
         The tiles which are part of our path.
     start : tuple (int, int). 
         Our starting position on the map.
+    exit_:  tuple (int, int). Optional
+        The "win condition": if the player moves to this tile, the game ends. 
+        If this parameter is set to None, there is no exit. If it is set to 'rand', it will randomly select from the blacks
 
     Returns
     -------
@@ -117,9 +120,16 @@ def map_builder(nrows, ncols, black, path, start):
         A representation of our map, where different values represent different tile types.
 
     """
+    #if exit == None, then we have no exit
+        
+    if exit_ == 'rand': #Randomly generate our exit
+        exit_ = random.choice(black)
+        
+    
 
     return tuple(
                 tuple(     5 if (i ,j) == start  #Start tiles
+                      else 2 if (i ,j) == exit_  #Exit tile
                       else 6 if (i ,j) in path   #Path tiles
                       else 0 if (i ,j) in black  #Unseen tiles
                       else 3                     #Wall tiles (?)
@@ -288,7 +298,7 @@ def new_observations(map_, pos):
     for r ,c in observed:
 
         #0 represents "already seen by player"
-        if map_[r][c] != 0: #If already seen, don't add
+        if map_[r][c] not in (0,2): #If already seen, don't add
             continue
 
         new_observations.add((r ,c)) #If not seen, add to new 
@@ -327,7 +337,7 @@ def update_map(map_, old_pos, new_pos):
 
     #Update map to reflect observations
     map_updated = [ 
-                    [6 if (r ,c) in observations #A visible tile is now a "path" tile!
+                    [6 if (r ,c) in observations #A visible tile is now a "path" tile! Unless exit
                      else map_[r][c] #Else, no change
                     for c in range(len(map_[0]))]
                     for r in range(len(map_))]
@@ -455,7 +465,7 @@ def map2tree(map_):
         for c, val in enumerate(row):
             if val == 5: #Found start position!
                 pos = (r ,c)
-            elif val == 0: #Count the number of black tiles
+            elif val in (0,2): #Count the number of black tiles
                 remains += 1
                 
     #Create tree to edit
