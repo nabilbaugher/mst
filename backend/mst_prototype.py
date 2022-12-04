@@ -806,8 +806,8 @@ def raw_nodevalue_comb(map_, node, gamma=1, beta=1):
     if tree[node].get("children", []): #Does this node have children?
         min_child_value = float("inf") #We want to pick min value: any will beat float("inf")
 
-        for cid in tree[node]["children"]: #Iter over kids
-            child_value = raw_nodevalue_comb(map_, cid, gamma, beta) #Do recursion
+        for child in tree[node]["children"]: #Iter over kids
+            child_value = raw_nodevalue_comb(map_, child, gamma, beta) #Do recursion
             
             if child_value < min_child_value: #Update val to find optimal child
                 min_child_value = child_value
@@ -820,8 +820,8 @@ def raw_nodevalue_comb(map_, node, gamma=1, beta=1):
 
     return value
 
-
-def node_values(map_, parameters, raw_nodevalue_func=raw_nodevalue_comb):
+#@memoize
+def node_values(map_, params, raw_nodevalue_func=raw_nodevalue_comb, parent=None):
     """
     Returns the value of every possible path (node) for the entire map.
     
@@ -834,7 +834,7 @@ def node_values(map_, parameters, raw_nodevalue_func=raw_nodevalue_comb):
            
            Our "maze" the player is moving through.
            
-    parameters : tuple of three floats.
+    params : tuple of three floats.
                  parameters to help calculate values. 
                  
                  If using raw_nodevalue_func=raw_nodevalue_comb, 
@@ -843,6 +843,10 @@ def node_values(map_, parameters, raw_nodevalue_func=raw_nodevalue_comb):
     raw_nodevalue_func : function, optional
         A function that computes the value of a single node.
         Configurable, so we can try out different functions/parameters for computing node values.
+        
+    parent : int, optional
+        If given this parameter, only find the node values which are the children of this node.
+        This can be used to compare different choices.
 
     Returns
     -------
@@ -859,12 +863,13 @@ def node_values(map_, parameters, raw_nodevalue_func=raw_nodevalue_comb):
     values_summary = {} # {node: {child_node: value, child_node: value, ...}}
     tree = map2tree(map_)
     
-    tau, gamma, beta = parameters
+    tau, gamma, beta = params
 
     for node in tree: 
-
-        if node == 'root': #No path: no need to find value
-            continue
+        
+        if parent!=None: #
+            if node != parent:
+                continue
 
         children = tree[node]['children']
 
@@ -889,7 +894,7 @@ def node_values(map_, parameters, raw_nodevalue_func=raw_nodevalue_comb):
         #Store these softmax-ed values
         values_summary[node] = {child_node: val for child_node,val in zip(children, values)}
         #Why are we indexing 1? Unknown
-
+    
     return values_summary
 
 

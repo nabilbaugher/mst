@@ -7,19 +7,40 @@ import time
 import itertools
 
 from mst_prototype import map2tree, node_values, map_builder
-
 from mst_prototype import raw_nodevalue_comb
 
 pp = pprint.PrettyPrinter(compact=False)
 
 import models
 
+
+"""
+A short summary of the various functions in this file:
+    best_path(map_, params, raw_nodevalue_func): return path
+        Based on our map and our value function, returns the best path for us to take.
+        *Uses mst_prototype.node_values, mst_prototype.map2tree
+    
+    visualize_maze(map_, ax=None): return None
+        Draws a human-readable version of our map with matplotlib
+    
+    visualize_path(map_, path, ax): return None
+        Draws a particular path on top of the matplotlib map
+        *Uses mst_prototype.map2tree
+        
+    visualize_juxtaposed_best_paths(map_, raw_nodevalue_func_and_params= eu_du_pwu): return None
+        Draw the best path for multiple different models, to compare.
+        *Uses best_path, visualize_maze, visualize_path
+        
+        **eu_du_pwu default variable uses mst_prototype.raw_nodevalue_comb
+    
+"""
+
+
 #with open(f'__experiment_1/parsed_data/tree.pickle', 'rb') as handle:
 #     TREE = pickle.load(handle)
 
-"returns the full trajectory of best path based on some node value function and parameter"
 
-def best_path(map_, parameters, raw_nodevalue_func):
+def best_path(map_, params, raw_nodevalue_func):
     """
     Finds the best path, based on our nodevalue function and parameters.
 
@@ -31,7 +52,7 @@ def best_path(map_, parameters, raw_nodevalue_func):
             
             Our "maze" the player is moving through.
             
-    parameters : tuple of three floats.
+    params : tuple of three floats.
                  parameters to help calculate values. 
                  
                  If using raw_nodevalue_func=raw_nodevalue_comb, 
@@ -51,7 +72,7 @@ def best_path(map_, parameters, raw_nodevalue_func):
     """
     
     TREE = map2tree(map_)  #Generate tree
-    value_summary = node_values(map_, parameters, raw_nodevalue_func) #Get all of our values
+    value_summary = node_values(map_, params, raw_nodevalue_func) #Get all of our values
     
     node = 0
     

@@ -4,6 +4,9 @@ import pprint
 import matplotlib.pyplot as plt
 import mst_prototype as mst_prototype
 
+from mst_prototype import map2tree, node_values
+from mst_prototype import raw_nodevalue_comb
+
 pp = pprint.PrettyPrinter(compact=False, width=90)
 
 import models
@@ -22,25 +25,33 @@ map_1 = ((3, 3, 3, 3, 3, 3, 3, 3, 3),
 ###Test tree: map_1
 TREE= mst_prototype.map2tree(map_1)
 
-print(TREE)
+
 
 """
-Some representation of how the subjects chose to act
+Some representation used by the original writers of this code
 
 THIS MAY BE USEFUL REFERENCE WHEN STORING DATA FROM THE EXPERIMENTS
 """
 
+# DECISIONS =
 # {subject:
 #    {map:
-#         {'nodes':[]}, #Which tree nodes were 
+#         {'nodes':[]}, 
 #         {'path': []}
 #         }}
 
-###Assumes that we have a pickle file
+###Experimental data we don't have
 # with open(f'__experiment_1/parsed_data/subject_decisions.pickle', 'rb') as handle:
      
 #     DECISIONS = pickle.load(handle)
 
+# with open(f'__experiment_1/node_values/{model_name}/node_values_{params}.pickle', 'rb') as handle:
+#     # {map: {pid: {nid: node value}}}
+#     node_values = pickle.load(handle)
+
+def compute_nll():
+    """
+    """
 
 """
 decisions_list = [(world, nid), ...]
@@ -48,55 +59,71 @@ return average loglike for sid for all decisions if world is None
 if world is specified, return average loglike for decisions made in that world
 """
 
-###Experimental data we don't have
-
-# with open(f'__experiment_1/node_values/{model_name}/node_values_{params}.pickle', 'rb') as handle:
-#     # {map: {pid: {nid: node value}}}
-#     node_values = pickle.load(handle)
-
-def loglike(params, model_name, decisions_list):
+def avg_log_likelihood_decisions(decisions_list,  params, raw_nodevalue_func=raw_nodevalue_comb ):
     """
+    Helps compute how likely these of decisions would have been, assuming our decisions were guided
+    by our model and params (higher value -> higher likelihood of decision)
     
+    Represents this as the log likelihood. Averaging this over all of our decisions
 
     Parameters
     ----------
-    params : TYPE
-        DESCRIPTION.
-    model_name : TYPE
-        DESCRIPTION.
-    decisions_list : TYPE
-        DESCRIPTION.
+    decisions_list : list of tuples (str, int)
+        Each tuple represents one decision our player made, on one map: (map_, node)
+        To reach this node, our player has to have gone from its parent node, and chosen this option.
+        
+        Thus, this list in total represents every decision our player made.
+        
+    params : tuple of three floats.
+                 parameters to help calculate values. 
+                 
+                 If using raw_nodevalue_func=raw_nodevalue_comb, 
+                 Contains our parameters (tau, gamma, beta).
+                 
+    raw_nodevalue_func : function, optional
+        A function that computes the value of a single node.
+        Configurable, so we can try out different functions/parameters for computing node values.
+    
 
     Returns
     -------
-    TYPE
-        DESCRIPTION.
+    float
+        The average log likelihood of this set of decision, given our model and parameters.
 
     """
-    
-    
 
     cum_loglike = 0
 
-    for world, nid in decisions_list:
+    for map_, node in decisions_list: #Every decision this subject has made
+        
+        tree = map2tree(map_) #Create a tree for this current map
+        
+        parent = tree[node]['pid'] #Get parent of our current node
 
-        pid = TREE[world][nid]['pid']
-
-        # root node has no value
-        if pid == 'NA':
+        #Root node: no decision was made, can move on
+        if parent == 'NA':
             continue
 
-        # parent node is not a decision node
-        if len(TREE[world][pid]['children']) <= 1:
+        choices = tree[parent]['children'] #All choices we could have made at the last step
+        
+        #If our parent had only one choice, then no decision was made: p=1, log(p)=0
+        if len(choices) <= 1:
             continue
-
-        cum_loglike += np.log(node_values[world][pid][nid])
-
-    return cum_loglike / len(decisions_list)
+        
+        #Get the node value for each choice the parent node had
+        choices = node_values(map_, params, raw_nodevalue_func=raw_nodevalue_comb, 
+                              parent = parent)[parent]
+        
+        #We only chose the current node
+        cum_loglike += np.log( choices[node] ) 
+    
+    return cum_loglike / len(decisions_list) #Average out the results
 
 
 def mle(parameters, model_name, decisions_list):
-    """ maximum likelihood estimation """
+    """
+    Determines which model is most probable, based on negative log likelihood minimization
+    """
 
     max_loglike = float('-inf')
 
@@ -120,7 +147,8 @@ def model_fitting(parameters, model_name):
 
     for sid in DECISIONS:
         for world in DECISIONS[sid]:
-            sid2decisions.setdefault(sid, []).extend([(world, nid) for nid in DECISIONS[sid][world]['nodes']])
+            sid2decisions.setdefault(sid, []).extend([(world, nid) 
+                                                      for nid in DECISIONS[sid][world]['nodes']])
 
         sid2mle[sid] = mle(parameters, model_name, sid2decisions[sid])
 
