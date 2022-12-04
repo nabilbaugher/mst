@@ -867,7 +867,7 @@ def node_values(map_, params, raw_nodevalue_func=raw_nodevalue_comb, parent=None
 
     for node in tree: 
         
-        if parent!=None: #
+        if parent!=None: #Exclusively focus on this node, rather than others
             if node != parent:
                 continue
 
