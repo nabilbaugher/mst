@@ -86,78 +86,6 @@ def best_path(map_, parameters, raw_nodevalue_func):
         node = best_child
 
 
-def map_visualizer(map_, node=None):
-    """
-    Turns a map representation into a human-interpretable image.
-
-    Parameters
-    ----------
-    map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
-            -tuple of tuples    has length = nrows, 
-            -each tuple of ints has length = ncols.
-           
-    node : int, optional
-        Visualize a specific node for this map: in other words, show a partially explored map. 
-        node is simply the number id for one of these partial paths.
-            -Note: If the id is too high, there may be no corresponding node.
-
-    Returns
-    -------
-    None
-    
-    
-    Uses matplotlib.pyplot to make our map human-viewable.
-    
-    If node is given, the corresponding partially explored map will be displayed. Meaning, in this map,
-    our player will have moved around to explore some of the black tiles.
-    
-    The map structure will still match map_, but it will display the path taken with a dotted line,
-    And any squares that have been viewed by this player is 
-
-
-    """
-
-    nrows, ncols = len(map_), len(map_[0])
-    
-    curr_map = map_
-    
-    if node: #If given a node, we've chosen a partial path.
-              #Draw that path!
-        
-        tree = map2tree(map_) #Get tree to get nodes
-        
-        #Make sure that this node is valid!
-        try:
-            path = tree[node]['path_from_root']
-        except:
-            raise ValueError(f"The node value {node} is not in range: this node does not exist!")
-
-        #Get the map matching this node
-        curr_map = tree[node]['map']
-        curr_pos = tree[node]['pos']
-        prev_pos = path[-1]
-        
-        #Update map based on our last step
-        curr_map = update_map(curr_map, curr_pos, prev_pos)
-        
-        #row --> y axis, col --> x axis
-        #Thus, to do (x,y), we need tuples of the form (c,r)
-        path = [(c ,r) for r ,c in path][::-1]
-        #Also reversing order of path
-        
-        #Convert pairs of elements (x,y) into two lists: X and Y
-        X, Y = zip(*[ (x + 0.5, nrows - y - 0.5)   for x ,y in path])
-        #Offset (+0.5, -0.5) is so that our dots are centered on each tile
-        
-        
-        ###Plotting our path
-        
-        #Draw dotted line between each tile on path
-        ax.plot(X, Y, 'o--',  markersize=4, label=node)
-        
-        #Color our starting point (X[-1],Y[-1]) as purple
-        ax.plot(X[-1], Y[-1], 's', markersize=8, color='purple')
-
 
 
 
@@ -228,10 +156,11 @@ def visualize_maze(map_, ax=None):
 #     ncols = int(f.readline())
 #     nrows = int(f.readline())
 
-"ax already has the drawing of the maze, path is in terms of node ids"
+
 def visualize_path(map_, path, ax):
     """
-    Takes a visual map, and draws a path on that map from start to end.
+    Takes a visual map, and draws a path on that map from start to end. 
+    The visual, represented as ax, is modified in-place: it doesn't have to be returned.
 
     Parameters
     ----------
@@ -272,6 +201,19 @@ def visualize_path(map_, path, ax):
 
 
 def visualize_juxtaposed_best_paths(maze):
+    """
+    
+
+    Parameters
+    ----------
+    maze : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    """
 
     _, axs = plt.subplots(1, 3)
     axs = axs.flat
