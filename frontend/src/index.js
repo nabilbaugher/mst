@@ -35,6 +35,7 @@ class GridSystem {
         
         this.resetBoardNewMaze = this.resetBoardNewMaze.bind(this);
         this.setUpHelper = this.setUpHelper.bind(this);
+        this.showEndScreen.bind(this);
        // this.render = this.render.bind(this);
 
         // Generate a random user ID for current user
@@ -45,22 +46,27 @@ class GridSystem {
     }
 
     resetBoardNewMaze() {
-        // Reset the current matrix and make this.matrices = this.matrices[1:]
-        // So if we take the first element in matrices matrices[0], it will give
-        // us the next maze in our sequence
+        /* Reset the current matrix and make this.matrices = this.matrices[1:]
+         So if we take the first element in matrices matrices[0], it will give
+         us the next maze in our sequence */
         console.log('this.matrices');
         console.log(this.matrices);
-        
-        this.matrices = this.matrices.slice(1, this.matrices.length);
-        this.matrix = JSON.parse(JSON.stringify(this.matrices[0]));
+        // If there are no more matrices in our array, 
+        // Display a confirmation code
 
-        console.log('this.matrices');
-        console.log(this.matrices);
+        if (this.matrices.length == 0) {
+            // Ask workers for their Worker ID
+            this.showEndScreen();
+        } else {
+            this.matrices = this.matrices.slice(1, this.matrices.length);
+            this.matrix = JSON.parse(JSON.stringify(this.matrices[0]));
+
+            console.log('this.matrices');
+            console.log(this.matrices);
 
 
-        //this.setUpHelper = this.setUpHelper.bind(this);
-
-        this.setUpHelper();
+            this.setUpHelper();
+        }
     }
 
     setUpHelper() {
@@ -109,20 +115,21 @@ class GridSystem {
 
     // We need a function to reset
 
-    async insertEntry({ tester_id, created_at, keystroke_sequences }) {
+    async insertEntry({ tester_id, created_at, keystroke_sequence }) {
         /*
         Uploads new data entry to keystroke_sequence table in supabase
         */
         try {
             //setLoading(True)
             const update = {
+                entry_id: uuid(),
                 tester_id: tester_id,
                 created_at,
-                keystroke_sequences,
+                keystroke_sequence,
             };
 
             const { error } = await supabase
-                .from('keystroke_sequence')
+                .from('trials')
                 .insert(update);
 
             if (error) {
@@ -292,6 +299,20 @@ class GridSystem {
         // 2nd quadrant: -x, +y
         // Getting left half of map by flipping map, and getting next "right" half
         let nearestLeftWall = ncols;
+    }
+
+    showEndScreen() {
+        var worker_id_input = document.createElement("input");
+        worker_id_input.type = "text";
+        worker_id_input.className = "worker_id_input";
+        document.body.appendChild(worker_id_input);
+
+        let btn = document.createElement('button');
+        btn.innerHTML = 'Next trial';
+        btn.style.position = 'absolute';
+        btn.style.left = center.x;
+        btn.style.top = '75%';
+        btn.addEventListener("click", this.resetBoardNewMaze);  
     }
 
     render() {
