@@ -317,6 +317,7 @@ def generate_spiral_map_with_offshoots(base_path, is_done, nrows=ROWS, ncols=COL
     
     return map_builder(nrows, ncols, black, path, start)
 
+
 if __name__ == "__main__":
     # pass
     # testing area
