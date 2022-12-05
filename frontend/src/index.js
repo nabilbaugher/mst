@@ -35,14 +35,18 @@ class GridSystem {
         
         this.resetBoardNewMaze = this.resetBoardNewMaze.bind(this);
         this.setUpHelper = this.setUpHelper.bind(this);
-        this.showEndScreen.bind(this);
+        // this.showEndScreen = this.showEndScreen.bind(this);
+        // this.render = this.render.bind(this);
        // this.render = this.render.bind(this);
 
         // Generate a random user ID for current user
         // Note: Currently, if one user refreshes the page, they will be considered a different user
         this.current_user_id = uuid();
 
+        document.addEventListener('keydown', this.#movePlayer);
+
         this.setUpHelper();
+
     }
 
     resetBoardNewMaze() {
@@ -53,20 +57,13 @@ class GridSystem {
         console.log(this.matrices);
         // If there are no more matrices in our array, 
         // Display a confirmation code
-
-        if (this.matrices.length == 0) {
-            // Ask workers for their Worker ID
-            this.showEndScreen();
-        } else {
-            this.matrices = this.matrices.slice(1, this.matrices.length);
-            this.matrix = JSON.parse(JSON.stringify(this.matrices[0]));
-
-            console.log('this.matrices');
-            console.log(this.matrices);
+        this.matrices = this.matrices.slice(1, this.matrices.length);
+        this.matrix = JSON.parse(JSON.stringify(this.matrices[0]));
+        console.log('this.matrices');
+        console.log(this.matrices);
 
 
-            this.setUpHelper();
-        }
+        this.setUpHelper();
     }
 
     setUpHelper() {
@@ -151,6 +148,12 @@ class GridSystem {
             true if the move is a valid move
             false otherwise
         */
+
+        this.matrix = JSON.parse(JSON.stringify(this.matrices[0]));
+        console.log("this.matrix");
+        console.log(this.matrix);
+        console.log("this.matrices");
+        console.log(this.matrices);
         const new_square_val = this.matrix[this.player.y + y][this.player.x + x];
         const curr_square_val = this.matrix[this.player.y][this.player.x];
         console.log(curr_square_val);
