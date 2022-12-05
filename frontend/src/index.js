@@ -210,6 +210,7 @@ class GridSystem {
                 this.render();
             }
         }
+        this.matrix = this.#update_map(this.matrix, this.player.x, this.player.y);
     };
 
     #getCenter(w, h) {
@@ -238,14 +239,47 @@ class GridSystem {
         return this.context;
     }
 
-    #raycaster(map, pos) {
+    #update_map(map_, new_pos) {
+        let observations = this.#newObservations(map_, new_pos); //Get observations
+        let new_map = [];
+
+        //Update map to reflect observations
+        for (let i = 0; i < map_.length; i++) {
+            new_map.push([]);
+            for (let j = 0; j < map_[i].length; j++) {
+                if (observations.has([i, j])) {
+                    new_map[i].push(6);
+                } else {
+                    new_map[i].push(map_[i][j]);
+                }
+            }
+        }
+
+    }
+
+    #newObservations(map_, pos) {
+        var observed = this.#raycaster(map_, pos);
+        var newObservations = new Set();
+
+        for (var r = 0; r < observed.length; r++) {
+            var c = observed[r];
+            if (map_[r][c] !== 0 && map_[r][c] !== 2) {
+                continue;
+            }
+            newObservations.add([r, c]);
+        }
+
+        return newObservations;
+    }
+
+    #raycaster(map_, pos) {
         // Retrieve the coordinates of the player's position
         let r = pos[0];
         let c = pos[1];
 
         // Retrieve the size of the map
-        let nrows = map.length;
-        let ncols = map[0].length;
+        let nrows = map_.length;
+        let ncols = map_[0].length;
 
         // Create a set to store the tiles currently visible to the player
         let observed = new Set();
@@ -256,7 +290,7 @@ class GridSystem {
         // Limit to top half of the map: [r, r-1, r-2, ..., 0]
         for (let r_ = r; r_ >= 0; r_--) {
             // Retrieve the current row of the map
-            let row = map[r_];
+            let row = map_[r_];
 
             // Wall stops our player from seeing past it
             let wall = Math.min(
@@ -284,6 +318,100 @@ class GridSystem {
         // 2nd quadrant: -x, +y
         // Getting left half of map by flipping map, and getting next "right" half
         let nearestLeftWall = ncols;
+
+        // Limit to top half of the map: [r, r-1, r-2, ..., 0]
+        for (let r_ = r; r_ >= 0; r_--) {
+            // Retrieve the current row of the map
+            let row = map_[r_];
+
+            // Wall stops our player from seeing past it
+            let wall = Math.max(
+                nearestLeftWall, // Previous wall
+                row.lastIndexOf(3, c)
+            ); // This row's closest wall: 3 is a wall
+
+            // Both walls block: whichever wall is closer (min), will block more.
+
+            // Limit to left half of the map
+            let left = [];
+            for (let c_ = c; c_ > wall; c_--) {
+                left.push(c_); // All of the points we can see: between our position and the wall
+            }
+            observed.add(left.map((c_) => [r_, c_])); // Add the visible tiles to the set of observed tiles
+
+            if (left.length == 0) {
+                // If nothing new is seen, then walls are completely blocking our view.
+                break;
+            }
+
+            nearestLeftWall = left[left.length - 1] - 1; // Closest wall carries over as we move further away: still blocks
+        }
+
+        // 3rd quadrant: -x, -y
+        // Getting left half of map by flipping map, and getting next "right" half
+        let nearestLeftWall2 = ncols;
+
+        // Limit to bottom half of the map: [r, r+1, r+2, ..., nrows-1]
+        for (let r_ = r; r_ < nrows; r_++) {
+            // Retrieve the current row of the map
+            let row = map_[r_];
+
+            // Wall stops our player from seeing past it
+            let wall = Math.max(
+                nearestLeftWall2, // Previous wall
+                row.lastIndexOf(3, c)
+            ); // This row's closest wall: 3 is a wall
+
+            // Both walls block: whichever wall is closer (min), will block more.
+
+            // Limit to left half of the map
+            let left = [];
+            for (let c_ = c; c_ > wall; c_--) {
+                left.push(c_); // All of the points we can see: between our position and the wall
+            }
+            observed.add(left.map((c_) => [r_, c_])); // Add the visible tiles to the set of observed tiles
+
+            if (left.length == 0) {
+                // If nothing new is seen, then walls are completely blocking our view.
+                break;
+            }
+
+            nearestLeftWall2 = left[left.length - 1] - 1; // Closest wall carries over as we move further away: still blocks
+        }
+
+        // 4th quadrant: +x, -y
+        // Getting right half of map by flipping map, and getting next "left" half
+        let nearestRightWall2 = ncols;
+
+        // Limit to bottom half of the map: [r, r+1, r+2, ..., nrows-1]
+        for (let r_ = r; r_ < nrows; r_++) {
+            // Retrieve the current row of the map
+            let row = map_[r_];
+
+            // Wall stops our player from seeing past it
+            let wall = Math.min(
+                nearestRightWall2, // Previous wall
+                row.indexOf(3, c)
+            ); // This row's closest wall: 3 is a wall
+
+            // Both walls block: whichever wall is closer (min), will block more.
+
+            // Limit to right half of the map
+            let right = [];
+            for (let c_ = c; c_ < wall; c_++) {
+                right.push(c_); // All of the points we can see: between our position and the wall
+            }
+            observed.add(right.map((c_) => [r_, c_])); // Add the visible tiles to the set of observed tiles
+
+            if (right.length == 0) {
+                // If nothing new is seen, then walls are completely blocking our view.
+                break;
+            }
+
+            nearestRightWall2 = right[right.length - 1] + 1; // Closest wall carries over as we move further away: still blocks
+        }
+
+        return observed;
     }
 
     render() {
