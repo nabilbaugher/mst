@@ -497,7 +497,7 @@ def map2tree(map_):
     #print('1', tree)
     
     while agenda: # in each loop, find and append children
-
+        
         node, updated_map = agenda.popleft() #Grab first element
         pos = tree[node]['pos'] #Current position
         
@@ -901,8 +901,6 @@ def node_values(map_,  node_params, parent_params,
         #Inner dictionary
         values_summary[node] = {}
         
-        #print('Params', parameters)
-        
         #Calulate value of each child, pre-softmax
         raw_values = [ raw_nodevalue_func(map_, child_node, *node_params) 
                       for child_node in children ]
@@ -910,11 +908,7 @@ def node_values(map_,  node_params, parent_params,
         #Apply whatever function you want to these raw values
         values = parent_nodeprob_func(raw_values, *parent_params) 
         
-        
-        
-        #Store these softmax-ed values
         values_summary[node] = {child_node: val for child_node,val in zip(children, values)}
-        #Why are we indexing 1? Unknown
     
     return values_summary
 

@@ -474,14 +474,15 @@ node_params_comb = ('gamma','beta')
 
 
 eu_model_class = {'model_name': 'Expected_Utility',
-                  'node_params_ranges': ((0,1), ())
-    }
+                  'node_params_ranges': ((0,1,10), (0,1,10)),
+                  'parent_params_ranges': ((0,1,10),),
+                  'raw_nodevalue_func': raw_nodevalue_comb,
+                  'parent_nodeprob_func': softmax
+                  }
 
-def fit_parameters(decisions_list, 
-                   model_name, node_params_ranges, parent_params_ranges, 
-                   raw_nodevalue_func=raw_nodevalue_comb, parent_nodeprob_func=softmax):
+def fit_parameters(decisions_list, model_class):
     """
-    For a given model type (functions unchanged), fit parameters to a pattern of human decisions.
+    For a given model class (functions unchanged), fit parameters to a pattern of human decisions.
 
     Parameters
     ----------
@@ -519,9 +520,13 @@ def fit_parameters(decisions_list,
     None.
 
     """
+    
     #Get all values we want to try for each parameter
-    node_param_arrays =   [ np.linspace(*param_range) for param_range in node_params_ranges ]
-    parent_param_arrays = [ np.linspace(*param_range) for param_range in parent_params_ranges ]
+    node_param_arrays =   [ np.linspace(*param_range) 
+                           for param_range in model_class['node_params_ranges'] ]
+    
+    parent_param_arrays = [ np.linspace(*param_range) 
+                           for param_range in model_class['parent_params_ranges'] ]
     
     all_node_params = generate_combinations(node_param_arrays)
     all_parent_params = generate_combinations(parent_param_arrays)
@@ -530,15 +535,15 @@ def fit_parameters(decisions_list,
     
     #Generate all of the models we want to compare
     
-    for node_params in all_node_params:
+    for node_params in all_node_params: #Every parameter combo creates its own model
         for parent_params in all_parent_params:
             
             #Put together variables
-            model = {'model_name': model_name,
-                     'node_params': node_params,
-                     'parent_params':parent_params,
-                     'raw_nodevalue_func': raw_nodevalue_func,
-                     'parent_nodeprob_func': parent_nodeprob_func}
+            model = {'model_name':           model_class['model_name'],
+                     'node_params':          node_params,
+                     'parent_params':        parent_params,
+                     'raw_nodevalue_func':   model_class['raw_nodevalue_func'],
+                     'parent_nodeprob_func': model_class['parent_nodeprob_func']}
                                       
             
             models.append( model )

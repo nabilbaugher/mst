@@ -19,7 +19,8 @@ pp = pprint.PrettyPrinter(compact=False)
 A short summary of the various functions in this file:
     best_path(map_, node_params, parent_params, raw_nodevalue_func): return path
         Based on our map and our value function, returns the best path for us to take.
-        *Uses mst_prototype.node_values, mst_prototype.map2tree
+        *Uses node_values, map2tree from mst_prototype
+        *Uses get_models_and_params from loglikes
     
     visualize_maze(map_, ax=None): return None
         Draws a human-readable version of our map with matplotlib
@@ -368,7 +369,7 @@ if __name__ == "__main__":
 
     Maze2=((3,3,3,3,3,3,3),
            (3,0, 0, 6, 0, 0,3),
-            (3,0, 3, 6, 3, 2,3),
+            (3,2, 3, 6, 3, 0,3),
            (3,3, 3, 5, 3, 3,3),
             (3,0, 3, 6, 3, 0,3),
             (3,0, 0, 6, 0, 0,3),
@@ -413,6 +414,6 @@ if __name__ == "__main__":
            (3,0, 0, 3, 3, 0, 0, 3, 3, 3, 3),
            (3,3,3,3,3,3,3,3,3,3,3),)
     
-    visualize_juxtaposed_best_paths(Maze1)
+    visualize_juxtaposed_best_paths(Maze2)
 
     #visualize_juxtaposed_best_paths(generate_spiral_maps(1)[0])

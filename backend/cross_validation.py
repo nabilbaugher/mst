@@ -134,8 +134,8 @@ def model_preference():
 
     Returns
     -------
-    model_preference : TYPE
-        DESCRIPTION.
+    model_preference : dictionary
+        Stores how successful each model class was:
 
     """
     
@@ -143,7 +143,9 @@ def model_preference():
 
 
     model_preference = {}  # {model_name: number of subjects that prefer this model}
-
+    
+    for subject in 
+    
     for sid in DECISIONS:
         decisions_list = []
         max_avg_loglike = float('-inf')
