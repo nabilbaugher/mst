@@ -300,7 +300,7 @@ def generate_spiral_map_with_offshoots(base_path, is_done, nrows=ROWS, ncols=COL
                             offshoot_candidates.append(offshoot)
                         break
                     offshoot.append((row, col))
-                if random.random() < i/len(route):
+                if i > 10:
                     offshoot.extend(complete_the_square((0,0), *offshoot[-2:]))
             
             if len(offshoot_candidates) == 0:
