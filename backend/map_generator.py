@@ -1,14 +1,14 @@
 import matplotlib.pyplot as plt
 from mst_prototype import map_builder, map_visualizer
-from simulation import visualize_maze
+from simulation import visualize_maze, visualize_juxtaposed_best_paths, map2tree
 import numpy as np
 import copy
 import random
 
 # default values
 ROWS, COLS, BUFFER = 15, 15, 5
-INTERVAL_RANGE = (5, 10)
-OFFSHOOT_LENGTH_RANGE = (4, 9)
+INTERVAL_RANGE = (8, 12)
+OFFSHOOT_LENGTH_RANGE = (3, 7)
 
 def generate_spiral_maps(nmaps, nrows=ROWS, ncols=COLS, buffer=BUFFER, interval_range=INTERVAL_RANGE, offshoot_length_range=OFFSHOOT_LENGTH_RANGE):
     """
@@ -84,6 +84,50 @@ def generate_different_size_maps(map):
 
     return [map, twice_as_big_map, four_times_as_big_map]
 
+def get_neighbors(point, just_cross=True):
+    """
+    Returns a set of tuples representing the neighbors of a point.
+    """
+    row, col = point
+    if just_cross:
+        return {(row + 1, col), (row - 1, col), (row, col + 1), (row, col - 1)}
+    return {(row + 1, col + 1), (row + 1, col), (row + 1, col - 1), (row, col + 1), (row, col - 1), (row - 1, col + 1), (row - 1, col), (row - 1, col - 1)}
+
+def get_permutations(l):
+    """
+    Returns a list of all permutations of a list.
+    """
+    if len(l) == 0:
+        return []
+    if len(l) == 1:
+        return [l]
+    perms = []
+    for i in range(len(l)):
+        m = l[i]
+        rem = l[:i] + l[i+1:]
+        for p in get_permutations(rem):
+            perms.append([m] + p)
+    return perms
+
+def complete_the_square(point1, point2, point3):
+    """
+    Given three points, complete the square by adding the fourth point. If the
+    three points are not in a square, complete the square using the latter two
+    points.
+    """
+    # check for a corner
+    for permutation in get_permutations([point1, point2, point3]):
+        p1, p2, p3 = permutation
+        r1, c1 = p1
+        r2, c2 = p2
+        r3, c3 = p3
+        if p1 in get_neighbors(p3) and p2 in get_neighbors(p3) and p1 in get_neighbors(p2, just_cross=False):
+            return [(r1 + r2 - r3, c1 + c2 - c3)]
+    
+    # no corner
+    if point2[0] == point3[0]:
+        return [(point2[0]+1, point2[1]), (point3[0]+1, point3[1])]
+    return [(point2[0], point2[1]+1), (point3[0], point3[1]+1)] 
 
 def generate_spiral_base_path(nrows=ROWS, ncols=COLS, buffer=BUFFER):
     """
@@ -104,7 +148,7 @@ def generate_spiral_base_path(nrows=ROWS, ncols=COLS, buffer=BUFFER):
         # buffer of one tile around the edge
         return 1 <= row < nrows - 1 and 1 <= col < ncols - 1
     
-    def is_done(row, col, direction, buffer):
+    def is_done(row, col, path, direction, buffer):
         """
         Checks to see whether or not any more tiles can be laid in the
         current direction given the buffer and the bounds.
@@ -134,59 +178,13 @@ def generate_spiral_base_path(nrows=ROWS, ncols=COLS, buffer=BUFFER):
                 raise ValueError("Invalid direction")
         return False
     
-    def get_neighbors(point, just_cross=True):
-        """
-        Returns a set of tuples representing the neighbors of a point.
-        """
-        row, col = point
-        if just_cross:
-            return {(row + 1, col), (row - 1, col), (row, col + 1), (row, col - 1)}
-        return {(row + 1, col + 1), (row + 1, col), (row + 1, col - 1), (row, col + 1), (row, col - 1), (row - 1, col + 1), (row - 1, col), (row - 1, col - 1)}
-    
-    def get_permutations(l):
-        """
-        Returns a list of all permutations of a list.
-        """
-        if len(l) == 0:
-            return []
-        if len(l) == 1:
-            return [l]
-        perms = []
-        for i in range(len(l)):
-            m = l[i]
-            rem = l[:i] + l[i+1:]
-            for p in get_permutations(rem):
-                perms.append([m] + p)
-        return perms
-    
-    def complete_the_square(point1, point2, point3):
-        """
-        Given three points, complete the square by adding the fourth point. If the
-        three points are not in a square, complete the square using the latter two
-        points.
-        """
-        # check for a corner
-        for permutation in get_permutations([point1, point2, point3]):
-            p1, p2, p3 = permutation
-            r1, c1 = p1
-            r2, c2 = p2
-            r3, c3 = p3
-            if p1 in get_neighbors(p3) and p2 in get_neighbors(p3) and p1 in get_neighbors(p2, just_cross=False):
-                return [(r1 + r2 - r3, c1 + c2 - c3)]
-        
-        # no corner
-        if point2[0] == point3[0]:
-            return [(point2[0]+1, point2[1]), (point3[0]+1, point3[1])]
-        return [(point2[0], point2[1]+1), (point3[0], point3[1]+1)]            
-        
-    
     direction = 0 # 0 = right, 1 = down, 2 = left, 3 = up
     black, path, start = [], [], (1, 1)
     row, col = start
         
     while True:
         # generate a line of black squares until we run out of space
-        if is_done(row, col, direction, buffer):
+        if is_done(row, col, path, direction, buffer):
             break
 
         while in_bounds(row, col):
@@ -205,14 +203,13 @@ def generate_spiral_base_path(nrows=ROWS, ncols=COLS, buffer=BUFFER):
             else:
                 raise Exception("Invalid direction")
             
-            if is_done(row, col, direction, buffer):
+            if is_done(row, col, path, direction, buffer):
                 break
 
         direction = (direction + 1) % 4
         
     black = path[-3:]
     black.extend(complete_the_square(*black))
-    goal = random.choice(black)
     path = [coord for coord in path if coord not in black]
     
     # uncomment to visualize
@@ -268,6 +265,7 @@ def generate_spiral_map_with_offshoots(base_path, is_done, nrows=ROWS, ncols=COL
     
     black, path, start = base_path
     black, path = black.copy(), path.copy()
+    exit_ = random.choice(black)
     route = path + black
     steps_since_last_offshoot = 0
 
@@ -297,11 +295,13 @@ def generate_spiral_map_with_offshoots(base_path, is_done, nrows=ROWS, ncols=COL
                 direction = (direction + 1) % 4
                 for j in range(offshoot_length):
                     row, col = move_in_direction(row, col, direction)
-                    if (is_done(row, col, direction, buffer=2)) or j == offshoot_length - 1:
+                    if (is_done(row, col, path + black, direction, buffer=2)) or j == offshoot_length - 1:
                         if len(offshoot) >= 3:
                             offshoot_candidates.append(offshoot)
                         break
                     offshoot.append((row, col))
+                if random.random() < i/len(route):
+                    offshoot.extend(complete_the_square((0,0), *offshoot[-2:]))
             
             if len(offshoot_candidates) == 0:
                 continue
@@ -315,16 +315,23 @@ def generate_spiral_map_with_offshoots(base_path, is_done, nrows=ROWS, ncols=COL
     # visualize_maze(map_builder(nrows, ncols, black, path, start))
     # plt.show()
     
-    return map_builder(nrows, ncols, black, path, start)
+    return map_builder(nrows, ncols, black, path, start, exit_=exit_)
 
 
 if __name__ == "__main__":
     # pass
     # testing area
     # generate_spiral_maps(1)
-    for maze in generate_spiral_maps(5):
-        visualize_maze(maze)
-        plt.show()
+    for i, maze in enumerate(generate_spiral_maps(10)):
+        print('const maze_' + str(i) + ' = [')
+        for row in maze:
+            print('\t' + str(list(row)))
+        print('];\n')
+        # visualize_maze(maze)
+        # visualize_juxtaposed_best_paths(maze)
+        # plt.show()
+        # tree = map2tree(maze)
+        # print(tree)
 
 
     # map_1 = ((3, 3, 3, 3, 3, 3, 3, 3, 3),
