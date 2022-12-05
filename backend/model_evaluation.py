@@ -13,6 +13,32 @@ pp = pprint.PrettyPrinter(compact=False, width=90)
 
 
 
+"""
+A short summary of the various functions in this file:
+    
+    avg_log_likelihood_decisions(decisions_list,  model ): return avg_loglike
+        For a particular model, measure how well it matches human behavior using average log likelihood
+        (Related to the idea of, "how likely was the model to produce this behavior")
+        
+        *Uses maze.maze2tree, maze.Maze, decisionsmodel.DecisionModel
+        
+    decisions_to_subject_decisions(decisions): return subject_decisions
+        Convert decisions of various subjects into a more useful format.
+    
+    split_train_test_kfold(decisions_list, k=4): yield (train, test)
+        Split up data into testing and training chunks to swap out for cross-validation purposes.
+        
+    split_train_test_rand(decisions_list, k=4): yield (train, test)
+        Split up data into testing and training randomly for cross-validation purposes.
+    
+    model_preference(model_classes, decisions, k=4): return model_preferences
+        Takes several model classes, and computes how many subjects best fit into each model class.
+    
+        
+Reminder of the params typical format
+    parent_params_comb = ('tau',)
+    node_params_comb = ('gamma','beta')
+"""
 
 
 def avg_log_likelihood_decisions(decisions_list,  model ):
@@ -30,17 +56,26 @@ def avg_log_likelihood_decisions(decisions_list,  model ):
         
         Thus, this list in total represents every decision our player made.
         
-    model : DecisionModel object, representing one model for player-decisions.
+    model : DecisionModel object, representing one model for player-decisions. 
+        Contains variables-
     
-        Contains several variables:
-            str is the name of the model
-            
-            first tuple has the parameters for node value
-            second tuple has the parameters for node probability
-            
-            first function is used to compute node value
-            second function is used to compute node probability
-            
+             model_name: str
+                Contains the name of this model. Usually, the model class it is stored in.
+                
+             node_params: tuple of floats.
+                 Contains the parameters for calculating the raw value of one node.
+                 
+             parent_params: tuple of floats.
+                 Contains the parameters we need for calculating the probability of each child node, using values.
+                 
+            raw_nodevalue_func : function, optional
+                A function that computes the value of a single node.
+                Inputs are (maze, node, *params)
+                
+            parent_nodeprob_func : function, optional
+                A function that computes the probability for each of our nodes.
+                Inputs are (values, *params)
+                
         Fully describes a single model for player action.
     
 

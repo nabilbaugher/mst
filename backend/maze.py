@@ -6,6 +6,96 @@ import pprint
 from collections import deque
 
 
+
+"""
+class Maze():
+    The class representing our maze: takes our base grid, and adds some functionality to it.
+    
+    map_builder(self): return None
+        Uses a description of a map, and turns it into a "grid".
+        
+    raycaster(self, pos): return observations
+        Determines which tiles our player can see from their current position.
+        
+    new_observations(self, pos): return new_observations
+        Finds which tiles can the player see, which haven't been seen before
+    
+        *Uses self.raycaster
+        
+    update_map(self, old_pos, new_pos): return map_updated
+        Updates our grid map to reflect the player moving: updates black (unseen) tiles to path (seen)
+        
+        *Uses self.new_observations
+        
+    possible_paths(self, pos): returns paths
+        Gives us every possible path from the player's position to revealing a black tile.
+        
+        *Uses self.new_observations
+        
+    visualize(self, node=None): returns None
+        Takes in our map, and prints a version that is more human-readable.
+        
+    
+
+A short summary of the various functions in this file:
+    
+    maze2tree(maze): returns tree
+        Converts our map into a tree of every possible path our player can take, assuming
+        they always move to reveal black tiles.
+        
+        *Uses maze.possible_paths, maze.update_map
+        
+        ##Used so we can properly take advantage of memoizing
+    
+    map_builder(map_): return None
+        Uses a description of a map, and turns it into a "grid".
+        
+        ##This function is used to keep compatibility if one wants to use a tuple of tuples (grid),
+        ##rather than a Maze object.
+    
+    map_visualizer(self, node=None): returns None  
+        Takes in our map, and prints a version that is more human-readable.
+    
+        *Uses maze.maze2tree, maze.update_map
+        
+        ##This function is used to keep compatibility if one wants to use a tuple of tuples (grid),
+        ##rather than a Maze object.
+        
+
+
+
+Overall representation:
+    Our map is a tuple of tuples, where each tile is represented by a number:
+        5 is the start tile
+            Where player starts
+            
+        6 is the path tile
+            Where player can walk, and is known by player
+            
+        0 is the black tile
+            Unseen by player, converts into 6 when seen.
+            
+        3 is the wall tile
+            Cannot be walked on by player; blocks their vision from seeing other tiles
+        
+        2 is the exit tile
+            Looks like a black tile until observed by the player: reaching it is the win condition
+        
+        When calculating, we assume that the exit tile is equally likely to be in any of the seemingly black squares,
+        even if we actually know where the exit tile is.
+    
+    
+    
+    
+Reminder of the params typical format
+    parent_params_comb = ('tau',)
+    node_params_comb = ('gamma','beta')
+"""
+
+
+
+
+
 class Maze:
     
     def __init__(self, nrows, ncols, black, path, start, exit_=None):
@@ -414,7 +504,7 @@ class Maze:
             #Also reversing order of path
             
             #Convert pairs of elements (x,y) into two lists: X and Y
-            X, Y = zip(*[ (x + 0.5, nrows - y - 0.5)   for x ,y in path])
+            X, Y = zip(*[ (x + 0.5, self.nrows - y - 0.5)   for x ,y in path])
             #Offset (+0.5, -0.5) is so that our dots are centered on each tile
             
             

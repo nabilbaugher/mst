@@ -20,23 +20,27 @@ pp = pprint.PrettyPrinter(compact=False)
 
 """
 A short summary of the various functions in this file:
-    best_path(map_, node_params, parent_params, raw_nodevalue_func): return path
-        Based on our map and our value function, returns the best path for us to take.
-        *Uses node_values, map2tree from mst_prototype
-        *Uses get_models_and_params from loglikes
     
-    visualize_maze(map_, ax=None): return None
-        Draws a human-readable version of our map with matplotlib
-    
-    visualize_path(map_, path, ax): return None
-        Draws a particular path on top of the matplotlib map
-        *Uses mst_prototype.map2tree
+    best_path(maze,model): return path
+        Based on our maze and model, returns the best path for us to take.
         
-    visualize_juxtaposed_best_paths(map_, models= eu_du_pwu): return None
+        *Uses maze.maze2tree, maze.Maze, decisionmodel.DecisionModel
+    
+    visualize_maze(maze, ax=None): return None
+        Draws a human-readable version of our maze with matplotlib
+        
+        *Uses maze.Maze
+    
+    visualize_path(maze, path, ax): return None
+        Draws a particular path on top of the matplotlib maze
+        
+        *Uses maze.maze2tree
+        
+    visualize_juxtaposed_best_paths(maze, models= eu_du_pwu): return None
         Draw the best path for multiple different models, to compare.
-        *Uses best_path, visualize_maze, visualize_path
         
-        **Uses mst_prototype.raw_nodevalue_comb by default
+        *Uses best_path, visualize_maze, visualize_path
+        *Uses maze.Maze, decisionmodel.DecisionModel
         
 Reminder of the params typical format
     parent_params_comb = ('tau',)
@@ -167,9 +171,6 @@ def visualize_maze(maze, ax=None):
     if ax is None:
         _, ax = plt.subplots(1)
 
-
-
-
     #Rows count going down: we have to reverse our map order.
     maze1=maze.map[::-1]
     
@@ -283,18 +284,25 @@ def visualize_juxtaposed_best_paths(maze, models= eu_du_pwu):
                Our "maze" the player is moving through.
         
     models : list of models
-         model : DecisionModel object, representing one model for player-decisions.
+         model : DecisionModel object, representing one model for player-decisions. 
+             Contains variables-
          
-             Contains several variables:
-                 str is the name of the model
-                 
-                 first tuple has the parameters for node value
-                 second tuple has the parameters for node probability
-                 
-                 first function is used to compute node value
-                 second function is used to compute node probability
-                 
-             Fully describes a single model for player action.
+                  model_name: str
+                     Contains the name of this model. Usually, the model class it is stored in.
+                     
+                  node_params: tuple of floats.
+                      Contains the parameters for calculating the raw value of one node.
+                      
+                  parent_params: tuple of floats.
+                      Contains the parameters we need for calculating the probability of each child node, using values.
+                      
+                 raw_nodevalue_func : function, optional
+                     A function that computes the value of a single node.
+                     Inputs are (maze, node, *params)
+                     
+                 parent_nodeprob_func : function, optional
+                     A function that computes the probability for each of our nodes.
+                     Inputs are (values, *params)                
 
     Returns
     -------

@@ -8,7 +8,67 @@ from collections import deque
 
 from maze import Maze, maze2tree, grid2maze
 
+"""
+A short summary of the various functions in this file:
+    
+    softmax(values, tau): return softvals
+        Applies softmax to our values, with the parameter tau to make terms more/less similar.
+    
+    weight(p, beta): returns p_weighted
+        Re-weights probabilities, using parameter beta so that 
+        low probabilities are overestimated, and high probabilities are underestimated.
+        
+    raw_nodevalue_comb(map_, node, gamma=1, beta=1): return value
+        Calculates value of a particular node, using gamma and beta parameters.
+        Gamma makes future events less valuable: value is scaled down by gamma for each timestep.
+        Beta is the same as in weight.
+        
+        *Uses weight
+        
+    generate_combinations(array): return combinations
+        Takes one array storing several different arrays, and finds every way to combine one element from each array.
+        
+        
+class DecisionModel():
+    Represents one particular model for human decision-making in maze task.
+    
+    model_copy(self): return DecisionModel
+        Return a copy of the model.
+        
+    update_params(self, node_params=None, parent_params=None): return None
+        Update the parameters of this model.
+        
+    node_values(self, maze, parent=None): return values
+        Calculate the value of each node in the maze. 
+        Only the children of one parent, if that parent is specified.
+        
+        *Uses maze2tree
+        
 
+class DecisionModelRange(DecisionModel):
+    Represents one class of model for human decision-making in maze task - parameters given over a range.
+    
+    gen_model(self, node_params, parent_params): return DecisionModel
+        Create a model with the specified parameters.
+        
+        *Uses self.model_copy, self.update_params
+        
+    gen_node_param_range(self): return node_params_arrays
+        Takes the stored range, and produces all of the parameter values we need for the node function.
+        
+    gen_parent_param_range(self): return node_params_arrays
+        Takes the stored range, and produces all of the parameter values we need for the parent function.
+        
+    gen_models(self): return models
+        Creates all of the models our parameter ranges specify.
+        
+        *Uses self.gen_node_param_range, self.gen_parent_param_range
+        
+    fit_parameters(self, decisions_list): return model
+        Based on our evaluation function, and the decisions made by our player(s), determine which model parameters fit best.
+        
+        *Uses self.gen_models
+"""
 
 def softmax(values, tau):
     """
@@ -431,12 +491,12 @@ class DecisionModelRange(DecisionModel):
             All of our models.
 
         """
-        node_param_arrays =   self.gen_node_param_range()
+        node_params_arrays =   self.gen_node_param_range()
         
-        parent_param_arrays = self.gen_parent_param_range()
+        parent_params_arrays = self.gen_parent_param_range()
         
-        all_node_params = generate_combinations(node_param_arrays)
-        all_parent_params = generate_combinations(parent_param_arrays)
+        all_node_params = generate_combinations(node_params_arrays)
+        all_parent_params = generate_combinations(parent_params_arrays)
         
         models = []
         
