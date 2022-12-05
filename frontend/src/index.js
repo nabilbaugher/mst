@@ -32,9 +32,13 @@ class GridSystem {
         this.matrices = matrices;
         // We start with the first matrix in matrices
         this.matrix = JSON.parse(JSON.stringify(matrices[0]));
+
+        this.current_trial_number = 1;
         
         this.resetBoardNewMaze = this.resetBoardNewMaze.bind(this);
         this.setUpHelper = this.setUpHelper.bind(this);
+        this.submitWorkerID = this.submitWorkerID.bind(this);
+        this.showAfterEndScreen = this.showAfterEndScreen.bind(this);
         // this.showEndScreen = this.showEndScreen.bind(this);
         // this.render = this.render.bind(this);
        // this.render = this.render.bind(this);
@@ -55,15 +59,24 @@ class GridSystem {
          us the next maze in our sequence */
         console.log('this.matrices');
         console.log(this.matrices);
-        // If there are no more matrices in our array, 
-        // Display a confirmation code
+        
         this.matrices = this.matrices.slice(1, this.matrices.length);
-        this.matrix = JSON.parse(JSON.stringify(this.matrices[0]));
-        console.log('this.matrices');
-        console.log(this.matrices);
+        this.current_trial_number += 1;
+
+        if (this.matrices.length == 0) {
+            // If there are no more matrices in our array, 
+            // Display a text field for the user to enter worker ID
+            this.showEndScreen();
+
+        } else {
+            this.matrix = JSON.parse(JSON.stringify(this.matrices[0]));
+            console.log('this.matrices');
+            console.log(this.matrices);
 
 
-        this.setUpHelper();
+            this.setUpHelper();
+        }
+        
     }
 
     setUpHelper() {
@@ -112,21 +125,49 @@ class GridSystem {
 
     // We need a function to reset
 
-    async insertEntry({ tester_id, created_at, keystroke_sequence }) {
+    async insertEntryTrial({ tester_id, keystroke_sequence }) {
         /*
-        Uploads new data entry to keystroke_sequence table in supabase
+        Uploads new data entry to trials table in supabase
         */
         try {
             //setLoading(True)
             const update = {
                 entry_id: uuid(),
                 tester_id: tester_id,
-                created_at,
+                created_at: String(Date.now()),
                 keystroke_sequence,
             };
 
             const { error } = await supabase
                 .from('trials')
+                .insert(update);
+
+            if (error) {
+                throw error;
+            }
+        } catch (error) {
+            alert(error.message);
+        } finally {
+            console.log('Done');
+            //setLoading(False)
+        }
+    }
+
+    async insertEntryWorkerID({ tester_id, worker_id}) {
+        /*
+        Uploads new data entry to worker_id table in supabase
+        */
+        try {
+            //setLoading(True)
+            const update = {
+                entry_id: uuid(),
+                tester_id: tester_id,
+                created_at: String(Date.now()),
+                worker_id
+            };
+
+            const { error } = await supabase
+                .from('worker_ids')
                 .insert(update);
 
             if (error) {
@@ -433,23 +474,92 @@ class GridSystem {
     }
 
     showEndScreen() {
+        // Clear screen
+        document.body.innerHTML = "";
+
+        // Show text
+        const para = document.createElement("p");
+        const thank_you_string = "Thank you for completing this survey! Please enter your Worker ID below to ensure compensation for this task. You can find this on your MTurk Dashboard or in the upper left corner of the Worker website.";
+        para.textContent = thank_you_string;
+        para.style.position = 'absolute';
+        para.style.left = "10%";
+        para.style.top = "10%";
+        document.body.appendChild(para);
+
+        // Input for person to input their MTurk worker id
         var worker_id_input = document.createElement("input");
         worker_id_input.type = "text";
+        worker_id_input.placeholder = "Worker ID";
         worker_id_input.className = "worker_id_input";
+        worker_id_input.id = "worker_id_input";
+        worker_id_input.style.position = 'absolute';
+        worker_id_input.style.left = "10%";
+        worker_id_input.style.top = "20%";
         document.body.appendChild(worker_id_input);
 
+        // Button for person to submit
         let btn = document.createElement('button');
-        btn.innerHTML = 'Next trial';
+        btn.innerHTML = 'Submit';
         btn.style.position = 'absolute';
-        btn.style.left = center.x;
-        btn.style.top = '75%';
-        btn.addEventListener("click", this.resetBoardNewMaze);  
+        btn.style.left = "10%";
+        btn.style.top = '30%';
+        document.body.appendChild(btn);
+        
+
+        
+        btn.addEventListener("click", this.submitWorkerID);  
+    }
+
+    showAfterEndScreen() {
+        // Clear screen
+        document.body.innerHTML = "";
+
+        // Show text
+        const para = document.createElement("p");
+        const thank_you_string = "Thank you!"
+        para.textContent = thank_you_string;
+        para.style.position = 'absolute';
+        para.style.left = "10%";
+        para.style.top = "10%";
+        document.body.appendChild(para); 
+    }
+
+    submitWorkerID() {
+        
+        var worker_id = document.getElementById("worker_id_input").value;
+        console.log("worker_id");
+        console.log(worker_id);
+        this.insertEntryWorkerID({
+            tester_id: this.current_user_id,
+            // created_at: String(Date.now()),
+            worker_id: worker_id
+
+        });
+
+        this.showAfterEndScreen();
     }
 
     render() {
         /*
         Makes the visual representation of the maze
         */
+
+        // Remove old instruction string
+        const element = document.getElementById('instruction_string');
+        if (element) {
+            element.remove();
+        }
+        
+
+        const para = document.createElement("p");
+        const instruction_string = "Thank you for participating in our survey! You will be presented with 10 different types of mazes. Use the arrow keys → ← ↑ ↓ to move until you find the exit and win! The exit will be in a gray square. \n Current Trial: " + String(this.current_trial_number);
+        para.textContent = instruction_string;
+        para.id = "instruction_string";
+        para.style.position = 'absolute';
+        para.style.left = "10%";
+        para.style.top = "5%";
+        document.body.appendChild(para);
+
         const w =
             (this.cellSize + this.padding) * this.matrix[0].length - this.padding;
         const h =
@@ -538,10 +648,10 @@ class GridSystem {
             // Upload keystroke data
             this.current_keystroke_sequence.push('won');
 
-            this.insertEntry({
+            this.insertEntryTrial({
                 tester_id: this.current_user_id,
-                created_at: String(Date.now()),
-                keystroke_sequences: {
+               // created_at: String(Date.now()),
+                keystroke_sequence: {
                     1: this.current_keystroke_sequence,
                 },
             });
@@ -568,6 +678,17 @@ const gridMatrix1 = [
 const gridMatrix2 = [
     [3, 6, 6, 6, 6, 6, 6, 3, 3],
     [3, 3, 3, 3, 0, 3, 0, 3, 3],
+    [3, 6, 6, 3, 0, 3, 0, 3, 3],
+    [3, 5, 6, 6, 6, 6, 6, 6, 3],
+    [3, 6, 3, 3, 3, 3, 3, 6, 2],
+    [3, 6, 6, 6, 6, 6, 6, 6, 3],
+    [3, 3, 0, 0, 3, 3, 3, 3, 3],
+    [3, 3, 3, 3, 3, 3, 3, 3, 3],
+];
+
+const gridMatrix3 = [
+    [3, 6, 6, 6, 6, 6, 6, 3, 3],
+    [3, 6, 6, 6, 6, 6, 6, 6, 3],
     [3, 6, 6, 3, 0, 3, 0, 3, 3],
     [3, 5, 6, 6, 6, 6, 6, 6, 3],
     [3, 6, 3, 3, 3, 3, 3, 6, 2],
@@ -756,5 +877,5 @@ const gridMatrix2 = [
 // 	[3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
 // ];
 
-const gridSystem = new GridSystem([gridMatrix1, gridMatrix2]);
+const gridSystem = new GridSystem([gridMatrix1, gridMatrix2, gridMatrix3]);
 gridSystem.render();
