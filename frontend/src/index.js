@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-import styled from 'styled-components';
+//import styled from 'styled-components';
 
 import { createClient } from '@supabase/supabase-js';
 import { v1 as uuid } from 'uuid';
@@ -32,14 +32,16 @@ class GridSystem {
         this.matrices = matrices;
         // We start with the first matrix in matrices
         this.matrix = JSON.parse(JSON.stringify(matrices[0]));
-        this.setUpHelper();
-
+        
         this.resetBoardNewMaze = this.resetBoardNewMaze.bind(this);
         this.setUpHelper = this.setUpHelper.bind(this);
+       // this.render = this.render.bind(this);
 
         // Generate a random user ID for current user
         // Note: Currently, if one user refreshes the page, they will be considered a different user
         this.current_user_id = uuid();
+
+        this.setUpHelper();
     }
 
     resetBoardNewMaze() {
@@ -48,11 +50,15 @@ class GridSystem {
         // us the next maze in our sequence
         console.log('this.matrices');
         console.log(this.matrices);
-        this.matrix = JSON.parse(JSON.stringify(this.matrices[0]));
+        
         this.matrices = this.matrices.slice(1, this.matrices.length);
+        this.matrix = JSON.parse(JSON.stringify(this.matrices[0]));
 
         console.log('this.matrices');
         console.log(this.matrices);
+
+
+        //this.setUpHelper = this.setUpHelper.bind(this);
 
         this.setUpHelper();
     }
@@ -97,6 +103,8 @@ class GridSystem {
         this.current_keystroke_sequence = [];
 
         document.addEventListener('keydown', this.#movePlayer);
+
+        this.render();
     }
 
     // We need a function to reset
@@ -470,7 +478,8 @@ class GridSystem {
         btn.style.position = 'absolute';
         btn.style.left = center.x;
         btn.style.top = '75%';
-        btn.onclick = this.resetBoardNewMaze;
+        btn.addEventListener("click", this.resetBoardNewMaze);  
+       // btn.onclick = function() {this.resetBoardNewMaze()};
 
         // const Button = styled.button`
         // 	background-color: black;
@@ -535,7 +544,7 @@ const gridMatrix1 = [
 const gridMatrix2 = [
     [3, 6, 6, 6, 6, 6, 6, 3, 3],
     [3, 3, 3, 3, 0, 3, 0, 3, 3],
-    [3, 3, 3, 3, 0, 3, 0, 3, 3],
+    [3, 6, 6, 3, 0, 3, 0, 3, 3],
     [3, 5, 6, 6, 6, 6, 6, 6, 3],
     [3, 6, 3, 3, 3, 3, 3, 6, 2],
     [3, 6, 6, 6, 6, 6, 6, 6, 3],
