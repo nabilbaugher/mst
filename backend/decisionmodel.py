@@ -355,15 +355,33 @@ class DecisionModelRange(DecisionModel):
     """A model class, with a range of possible parameters."""
     
     def __init__(self, model_name, 
-                 node_params_ranges, parent_params_ranges, 
-                 raw_nodevalue_func=raw_nodevalue_comb, parent_nodeprob_func=softmax):
+                 node_params_ranges, parent_params_ranges, evaluation_function,
+                 raw_nodevalue_func=raw_nodevalue_comb, parent_nodeprob_func=softmax,):
         
-        super.__init__(self, model_name, raw_nodevalue_func=raw_nodevalue_comb, parent_nodeprob_func=softmax)
+        super().__init__(self, model_name, raw_nodevalue_func=raw_nodevalue_comb, parent_nodeprob_func=softmax)
         #Preserve usual DecisionModel stuff
         
+        
         #Add ranges
+        """
+        node_params_ranges: list of tuple (float, float, int)
+            Each list element (a tuple) represents a different parameter.
+            The parameter range is specified by three things: (start, end, samples)
+        """
         self.node_params_ranges = node_params_ranges
+        """
+        parent_params_ranges: list of tuple (float, float, int)
+            Each list element (a tuple) represents a different parameter.
+            The parameter range is specified by three things: (start, end, samples)
+        """
         self.parent_params_ranges = parent_params_ranges
+        
+        """
+        evaluation_function : function
+            Function that helps us determine which model is best.
+            Assumed to take in (decision_list, model). 
+        """
+        self.evaluation_function = evaluation_function
         
     def gen_model(self, node_params, parent_params):
         """
@@ -433,9 +451,9 @@ class DecisionModelRange(DecisionModel):
                 
         return models
                 
-    def fit_parameters(self, decisions_list, evaluation_function):
+    def fit_parameters(self, decisions_list):
         """
-        Select the set of parameters that gives this function the best outcome for the evaluation function. 
+        Select the set of parameters that gives this function the best outcome for our evaluation function. 
 
         Parameters
         ----------
@@ -444,10 +462,7 @@ class DecisionModelRange(DecisionModel):
             To reach this node, our player has to have gone from its parent node, and chosen this option.
             
             Thus, this list in total represents every decision our player made.
-            
-        evaluation_function : function
-            Function that helps us determine which model is best.
-            Assumed to take in (decision_list, model). 
+
 
         Returns
         -------
@@ -462,7 +477,7 @@ class DecisionModelRange(DecisionModel):
         
         for index, model in enumerate(models):
             
-            evaluation = evaluation_function(decisions_list,  model ) #Get model performance
+            evaluation = self.evaluation_function(decisions_list,  model ) #Get model performance
             
             performance[index] = evaluation #Save each value
             

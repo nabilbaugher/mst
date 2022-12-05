@@ -6,9 +6,9 @@ import pickle
 import time
 import itertools
 
-from mst_prototype import map2tree, node_values, map_builder
-from mst_prototype import raw_nodevalue_comb, softmax
-from loglikes import get_model_and_params
+# from mst_prototype import map2tree, node_values, map_builder
+# from mst_prototype import raw_nodevalue_comb, softmax
+# from loglikes import get_model_and_params
 # from map_generator import generate_spiral_maps
 
 from maze import Maze, maze2tree, grid2maze
