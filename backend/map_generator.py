@@ -1,6 +1,11 @@
 import matplotlib.pyplot as plt
-from mst_prototype import map_builder, map_visualizer
-from simulation import visualize_maze, visualize_juxtaposed_best_paths, map2tree
+
+##Changing these: sorry! -Shaunticlair, 12/5/22, 6:12am
+#from mst_prototype import map_builder, map_visualizer
+from maze import map_builder, map_visualizer, maze2tree
+
+#Visualize_maze works fine with map
+from simulation import visualize_maze, visualize_juxtaposed_best_paths
 import numpy as np
 import copy
 import random
@@ -300,7 +305,7 @@ def generate_spiral_map_with_offshoots(base_path, is_done, nrows=ROWS, ncols=COL
                             offshoot_candidates.append(offshoot)
                         break
                     offshoot.append((row, col))
-                if random.random() < i/len(route):
+                if i > 10:
                     offshoot.extend(complete_the_square((0,0), *offshoot[-2:]))
             
             if len(offshoot_candidates) == 0:
