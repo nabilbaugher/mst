@@ -36,6 +36,10 @@ A short summary of the various functions in this file:
         Finds the best-fitting single model for all of our subjective collectively
         
         *Uses decisions_to_subject_decisions, best_model_calculation
+        
+    fit_parameters(decisions_list, 
+                       model_name, node_params_ranges, parent_params_ranges, 
+                       raw_nodevalue_func=raw_nodevalue_comb, parent_nodeprob_func=softmax):
     
 """
 
@@ -351,9 +355,50 @@ def best_model_all_subjects(decisions, models):
     
     return best_model
             
+def generate_combinations(array):
+    """
+    For n different sub-arrays, find every way to draw one element from each array.
+    
+    For example, [a,b] and [1,2] make [ [a,1], [a, 2], [b,1], [b,2]
+    
+    Parameters
+    ----------
+    array: list of lists 
+        Our outer list contains multiple arrays of elements that we want to use in our combination.
+        
+        We will be pulling one element from each inner list to get our combinations.
+    
+    Returns
+    -------
+    combinations: list of lists
+        Each list is a unique combination of elements: one from each of our starting arrays.
 
-def fit_parameters(decisions_list, model_name, node_params_ranges, parent_params_ranges, 
-                   raw_nodevalue_func, parent_nodeprob_func):
+    """
+    combinations = []
+    
+    if len(array)==0: #Base case: no arrays, no combinations.
+        return [[]]
+    
+    
+    for elem in array[0]: #Otherwise, recurse: we iterate over our first array
+        
+        future_combinations = generate_combinations(array[1:]) #Iterate over the next array, then the next one...
+        
+        for comb in future_combinations: #We've got all of our results: combine them with our current element
+            
+            combinations.append( [elem] + comb ) #Assemble full combination
+            
+    return combinations
+        
+        
+        
+eu_du_pwu = [('Expected_Utility',     (1,1), (1,), raw_nodevalue_comb, softmax, ),
+             ('Discounted_Utillity',  (1,1), (1,), raw_nodevalue_comb, softmax, ),
+             ('Probability_Weighted', (1,1), (1,), raw_nodevalue_comb, softmax, )]
+
+def fit_parameters(decisions_list, 
+                   model_name, node_params_ranges, parent_params_ranges, 
+                   raw_nodevalue_func=raw_nodevalue_comb, parent_nodeprob_func=softmax):
     """
     For a given model type (functions unchanged), fit parameters to a pattern of human decisions.
 
@@ -375,7 +420,7 @@ def fit_parameters(decisions_list, model_name, node_params_ranges, parent_params
         Allows us to try out different param values in given ranges.
         For node value parameters.
         
-    node_params_ranges : tuple of tuples (float, float, int)
+    parent_params_ranges : tuple of tuples (float, float, int)
         Outer tuple - each inner tuple represents a different parameter.
         Each inner tuple represents the range we want to vary a parameter over: (min, max, number_of_samples)
         
@@ -393,8 +438,30 @@ def fit_parameters(decisions_list, model_name, node_params_ranges, parent_params
     None.
 
     """
+    #Get all values we want to try for each parameter
+    node_params =   [ np.linspace(*param_range) for param_range in node_params_ranges ]
+    parent_params = [ np.linspace(*param_range) for param_range in parent_params_ranges ]
     
-    ##This function is incomplete!
+    all_node_params = generate_combinations(node_params)
+    all_parent_params = generate_combinations(parent_params)
+    
+    return (all_node_params, all_parent_params)
+    
+    models = []
+    
+    #Generate all of the models we want to compare
+    
+    for node_params in all_node_params:
+        for parent_params in all_parent_params:
+            
+            models.append( (model_name, node_params, parent_params, 
+                            raw_nodevalue_func, parent_nodeprob_func) )
+            
+    return best_model_calculation(decisions_list, models)
+    
+    
+    
+
     
 
 # if __name__ == "__main__":
