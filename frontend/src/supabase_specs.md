@@ -21,10 +21,6 @@ in 10 different keystroke sequences
 
 Storing environment variables:
 
-export SUPABASE_URL=<<the value under config > URL>>
-export SUPABASE_KEY=<<the value present in Project API keys > anon public>> 
-export SUPABASE_SECRET_KEY=<<the value present in Project API keys > service_role secret>>
-
 
 
 

@@ -29,8 +29,10 @@ reportWebVitals();
 
 
 class GridSystem {
-	constructor(matrix, playerX, playerY) {
-		this.matrix = matrix;
+	constructor(matrices) {
+		this.matrices = matrices;
+		// We start with the first matrix in matrices
+		this.matrix = matrices[0]; 
 
 		var playerX = null;
 		var playerY = null;
@@ -44,10 +46,11 @@ class GridSystem {
 			}
 		}
 
+
+		// Trying to keep track of original player location,
+		// Might need it later for multiple mazes in a row
 		this.original_playerX = playerX;
 		this.original_playerY = playerY;
-
-		// Random supabase test
 
 		this.uiContext = this.#getContext(420, 580, "#000");
 		this.outlineContext = this.#getContext(0, 0, "#444");
@@ -57,16 +60,28 @@ class GridSystem {
 		this.player = { x: playerX, y: playerY, color: "orange" };
 		this.matrix[playerY][playerX] = 2;
 
+		// Generate a random user ID for current user
+		// Note: Currently, if one user refreshes the page, they will be considered a different user
 		this.current_user_id = uuid()
+		// Keep track of the keystroke sequence
 		this.current_keystroke_sequence = []
 		this.player_won = false
 
 		document.addEventListener("keydown", this.#movePlayer);
 	}
 
+	resetBoardNewMaze(matrices) {
+		// matrices passed in should be a slice of previous this.matrices[1:]
+		// So if we take the first element in matrices matrices[0], it will give 
+		// us the next maze in our sequence
+	}
+
 	// We need a function to reset 
 
 	async insertEntry({tester_id, created_at, keystroke_sequences}) {
+		/*
+		Uploads new data entry to keystroke_sequence table in supabase
+		*/
 		try{
 			//setLoading(True)
 			const update = {
@@ -91,6 +106,13 @@ class GridSystem {
 	}
 
 	#isValidMove(x, y) {
+		/* 
+		Input: x: number of proposed steps to move right
+				y: number of proposed steps to move down
+		Output:
+			true if the move is a valid move
+			false otherwise
+		*/
 		const new_square_val = this.matrix[this.player.y + y][this.player.x + x];
 		const curr_square_val = this.matrix[this.player.y][this.player.x];
 		console.log(curr_square_val)
@@ -112,6 +134,9 @@ class GridSystem {
 	}
 
 	#movePlayer = ( { keyCode } ) => {
+		/*
+		Maps the arrow keys left, right, up and down to move actions
+		*/
 		if (keyCode === 37) {
 			const is_valid = this.#isValidMove(-1, 0);
 			if (is_valid) {
@@ -186,6 +211,9 @@ class GridSystem {
 	}
 
 	render() {
+		/*
+		Makes the visual representation of the maze
+		*/
 		const w = (this.cellSize + this.padding) * this.matrix[0].length - (this.padding);
 		const h = (this.cellSize + this.padding) * this.matrix.length - (this.padding);
 
