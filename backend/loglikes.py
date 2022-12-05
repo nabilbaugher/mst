@@ -41,6 +41,10 @@ A short summary of the various functions in this file:
                        model_name, node_params_ranges, parent_params_ranges, 
                        raw_nodevalue_func=raw_nodevalue_comb, parent_nodeprob_func=softmax):
     
+        
+    Reminder of the params typical format
+        parent_params_comb = ('tau',)
+        node_params_comb = ('gamma','beta')
 """
 
 ###Experimental data we don't have
@@ -55,9 +59,55 @@ A short summary of the various functions in this file:
 
 
 #Models example
-eu_du_pwu = [('Expected_Utility',     (1,1), (1,), raw_nodevalue_comb, softmax, ),
-             ('Discounted_Utillity',  (1,1), (1,), raw_nodevalue_comb, softmax, ),
-             ('Probability_Weighted', (1,1), (1,), raw_nodevalue_comb, softmax, )]
+expected_utility_model = {'model_name': 'Expected_Utility',
+                          'node_params': (1,1), #gamma, beta
+                          'parent_params':(1,), #tau,
+                          'raw_nodevalue_func': raw_nodevalue_comb,
+                          'parent_nodeprob_func': softmax}
+
+discounted_utility_model = {'model_name': 'Discounted_Utility',
+                            'node_params': (1,1), #gamma, beta
+                            'parent_params':(1,), #tau,
+                            'raw_nodevalue_func': raw_nodevalue_comb,
+                            'parent_nodeprob_func': softmax}
+
+
+probability_weighted_model = {'model_name': 'Probability_Weighted',
+                              'node_params': (1,1), #gamma, beta
+                              'parent_params':(1,), #tau,
+                              'raw_nodevalue_func': raw_nodevalue_comb,
+                              'parent_nodeprob_func': softmax}
+
+def get_model_and_params(model):
+    """
+    Convert a model into a form that can be plugged into the node_values function.
+
+    Parameters
+    ----------
+    model : dictionary - key are strings
+        Values include:
+            model_name: str, name of model
+            
+            node_params: tuple, parameters of raw_nodevalue_func
+            parent_params: tuple, parameters of parent_nodeprob_func
+            
+            raw_nodevalue_func: function that computes value of a particular node.
+            parent_nodeprob_func: function that computes probability of choosing a node, given value.
+            
+        Fully describes a single model for player decision-making.
+        
+    Returns
+    -------
+    tuple of the above values, excluding model_name, in the order given.
+
+    """
+    components =  ('node_params', 'parent_params', 'raw_nodevalue_func', 'parent_nodeprob_func')
+    
+    return tuple(model[i] for i in components) #Convert to format we can unpack in our function
+    
+                          
+
+eu_du_pwu = [expected_utility_model, discounted_utility_model, probability_weighted_model]
 
 def avg_log_likelihood_decisions(decisions_list,  model ):
     """
@@ -74,16 +124,17 @@ def avg_log_likelihood_decisions(decisions_list,  model ):
         
         Thus, this list in total represents every decision our player made.
         
-    model : tuple of the form (str, function, function, tuple of floats, tuple of floats)
-            str is the name of the model
+    model : dictionary - key are strings
+        Values include:
+            model_name: str, name of model
             
-            first tuple has the parameters for node value
-            second tuple has the parameters for node probability
+            node_params: tuple, parameters of raw_nodevalue_func
+            parent_params: tuple, parameters of parent_nodeprob_func
             
-            first function is used to compute node value
-            second function is used to compute node probability
+            raw_nodevalue_func: function that computes value of a particular node.
+            parent_nodeprob_func: function that computes probability of choosing a node, given value.
             
-        Fully describes a single model for player action.
+        Fully describes a single model for player decision-making.
     
 
     Returns
@@ -94,7 +145,7 @@ def avg_log_likelihood_decisions(decisions_list,  model ):
     """
     
     #Unpack our model
-    (_, node_params, parent_params, raw_nodevalue_func, parent_nodeprob_func) = model
+    model_params = get_model_and_params(model)
 
     cum_loglike = 0
 
@@ -115,9 +166,7 @@ def avg_log_likelihood_decisions(decisions_list,  model ):
             continue
         
         #Get the node value for each choice the parent node had
-        choices = node_values(map_,  node_params, parent_params,
-                        raw_nodevalue_func,  parent_nodeprob_func, #Optional
-                        parent=parent)[parent]
+        choices = node_values(map_,  *model_params, parent=parent)[parent]
         
         #We only chose the current node
         cum_loglike += np.log( choices[node] ) 
@@ -202,28 +251,30 @@ def best_model_calculation(decisions_list, models):
         
         Thus, this list in total represents every decision our player made.
         
-    models : list of tuples 
-        Each tuple of the form (str, function, function, tuple of floats, tuple of floats)
-            str is the name of the model
-            
-            first tuple has the parameters for node value
-            second tuple has the parameters for node probability
-            
-            first function is used to compute node value
-            second function is used to compute node probability
-            
-        Each tuple represents a model we want to try out.
+    models : list of models (dictionaries)
+        model : dictionary - key are strings
+            Values include:
+                model_name: str, name of model
+                
+                node_params: tuple, parameters of raw_nodevalue_func
+                parent_params: tuple, parameters of parent_nodeprob_func
+                
+                raw_nodevalue_func: function that computes value of a particular node.
+                parent_nodeprob_func: function that computes probability of choosing a node, given value.
+                
+            Fully describes a single model for player decision-making.
 
     Returns
     -------
-    best_model : tuple of the form (str, function, function, tuple of floats, tuple of floats)
-                str is the name of the model
-                
-                first tuple has the parameters for node value
-                second tuple has the parameters for node probability
-                
-                first function is used to compute node value
-                second function is used to compute node probability
+    best model : dictionary - key are strings
+        Values include:
+            model_name: str, name of model
+            
+            node_params: tuple, parameters of raw_nodevalue_func
+            parent_params: tuple, parameters of parent_nodeprob_func
+            
+            raw_nodevalue_func: function that computes value of a particular node.
+            parent_nodeprob_func: function that computes probability of choosing a node, given value.
         
         The best model for our entire experimental sample.
 
@@ -231,14 +282,16 @@ def best_model_calculation(decisions_list, models):
     
     ll_models = {} #Log likelihood
     
-    for model in models:
+    for index, model in enumerate(models):
+        
+        
         ll = avg_log_likelihood_decisions(decisions_list,  model ) #Get log likelihood
         
-        ll_models[model] = ll #Save each ll value
+        ll_models[index] = ll #Save each ll value
         
-    best_model = max( ll_models, key= ll_models[model] ) #Find the best model
+    best_index = max( ll_models, key= ll_models[index] ) #Find the best model
     
-    return best_model
+    return models[best_index]
     
     
 
@@ -257,22 +310,23 @@ def best_model_each_subject(decisions, models):
         
             Stores the decisions made by every single subject we've tested.
             
-    models : list of tuples 
-        Each tuple of the form (str, function, function, tuple of floats, tuple of floats)
-            str is the name of the model
-            
-            first tuple has the parameters for node value
-            second tuple has the parameters for node probability
-            
-            first function is used to compute node value
-            second function is used to compute node probability
-            
-        Each tuple represents a model we want to try out.
+    models : list of models (dictionaries)
+        model : dictionary - key are strings
+            Values include:
+                model_name: str, name of model
+                
+                node_params: tuple, parameters of raw_nodevalue_func
+                parent_params: tuple, parameters of parent_nodeprob_func
+                
+                raw_nodevalue_func: function that computes value of a particular node.
+                parent_nodeprob_func: function that computes probability of choosing a node, given value.
+                
+            Fully describes a single model for player decision-making.
         
     Returns
     -------
     best_model_per_subject : 
-        Dictionary of tuples - keys are subjects, vals are models
+        Dictionary of models (dictionaries) - keys are subjects
         
             tuple of the form (str, function, function, tuple of floats, tuple of floats)
                 str is the name of the model
@@ -318,17 +372,18 @@ def best_model_all_subjects(decisions, models):
         
             Stores the decisions made by every single subject we've tested.
             
-    models : list of tuples 
-        Each tuple of the form (str, function, function, tuple of floats, tuple of floats)
-            str is the name of the model
-            
-            first tuple has the parameters for node value
-            second tuple has the parameters for node probability
-            
-            first function is used to compute node value
-            second function is used to compute node probability
-            
-        Each tuple represents a model we want to try out.
+    models : list of models (dictionaries)
+        model : dictionary - key are strings
+            Values include:
+                model_name: str, name of model
+                
+                node_params: tuple, parameters of raw_nodevalue_func
+                parent_params: tuple, parameters of parent_nodeprob_func
+                
+                raw_nodevalue_func: function that computes value of a particular node.
+                parent_nodeprob_func: function that computes probability of choosing a node, given value.
+                
+            Fully describes a single model for player decision-making.
         
     Returns
     -------
@@ -392,9 +447,35 @@ def generate_combinations(array):
         
         
         
-eu_du_pwu = [('Expected_Utility',     (1,1), (1,), raw_nodevalue_comb, softmax, ),
-             ('Discounted_Utillity',  (1,1), (1,), raw_nodevalue_comb, softmax, ),
-             ('Probability_Weighted', (1,1), (1,), raw_nodevalue_comb, softmax, )]
+#Models example
+expected_utility_model = {'model_name': 'Expected_Utility',
+                          'node_params': (1,1), #gamma, beta
+                          'parent_params':(1,), #tau,
+                          'raw_nodevalue_func': raw_nodevalue_comb,
+                          'parent_nodeprob_func': softmax}
+
+discounted_utility_model = {'model_name': 'Discounted_Utility',
+                            'node_params': (1,1), #gamma, beta
+                            'parent_params':(1,), #tau,
+                            'raw_nodevalue_func': raw_nodevalue_comb,
+                            'parent_nodeprob_func': softmax}
+
+
+probability_weighted_model = {'model_name': 'Probability_Weighted',
+                              'node_params': (1,1), #gamma, beta
+                              'parent_params':(1,), #tau,
+                              'raw_nodevalue_func': raw_nodevalue_comb,
+                              'parent_nodeprob_func': softmax}
+
+
+#Reminder of the params typical format
+parent_params_comb = ('tau',)
+node_params_comb = ('gamma','beta')
+
+
+eu_model_class = {'model_name': 'Expected_Utility',
+                  'node_params_ranges': ((0,1), ())
+    }
 
 def fit_parameters(decisions_list, 
                    model_name, node_params_ranges, parent_params_ranges, 
@@ -439,13 +520,11 @@ def fit_parameters(decisions_list,
 
     """
     #Get all values we want to try for each parameter
-    node_params =   [ np.linspace(*param_range) for param_range in node_params_ranges ]
-    parent_params = [ np.linspace(*param_range) for param_range in parent_params_ranges ]
+    node_param_arrays =   [ np.linspace(*param_range) for param_range in node_params_ranges ]
+    parent_param_arrays = [ np.linspace(*param_range) for param_range in parent_params_ranges ]
     
-    all_node_params = generate_combinations(node_params)
-    all_parent_params = generate_combinations(parent_params)
-    
-    return (all_node_params, all_parent_params)
+    all_node_params = generate_combinations(node_param_arrays)
+    all_parent_params = generate_combinations(parent_param_arrays)
     
     models = []
     
@@ -454,8 +533,15 @@ def fit_parameters(decisions_list,
     for node_params in all_node_params:
         for parent_params in all_parent_params:
             
-            models.append( (model_name, node_params, parent_params, 
-                            raw_nodevalue_func, parent_nodeprob_func) )
+            #Put together variables
+            model = {'model_name': model_name,
+                     'node_params': node_params,
+                     'parent_params':parent_params,
+                     'raw_nodevalue_func': raw_nodevalue_func,
+                     'parent_nodeprob_func': parent_nodeprob_func}
+                                      
+            
+            models.append( model )
             
     return best_model_calculation(decisions_list, models)
     
@@ -469,11 +555,6 @@ def fit_parameters(decisions_list,
 #     parameters = [(tau, 1, 1) for tau in models.TAUS]
 #     model_name = 'Expected_Utility'
 
-#     parameters = [(round(tau, 3), round(gamma, 3), 1) for tau in models.TAUS for gamma in models.GAMMAS]
-#     model_name = 'Discounted_Utility'
-
-#     parameters = [(round(tau, 3), 1, round(gamma, 3)) for tau in models.TAUS for gamma in models.BETAS]
-#     model_name = 'Probability_Weighted_Utility'
 
 #     # loglike(sid, parameters[0], model_name)
 #     # mle(sid, parameters, model_name)

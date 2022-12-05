@@ -8,6 +8,7 @@ import itertools
 
 from mst_prototype import map2tree, node_values, map_builder
 from mst_prototype import raw_nodevalue_comb, softmax
+from loglikes import get_model_and_params
 # from map_generator import generate_spiral_maps
 
 pp = pprint.PrettyPrinter(compact=False)
@@ -32,17 +33,16 @@ A short summary of the various functions in this file:
         *Uses best_path, visualize_maze, visualize_path
         
         **Uses mst_prototype.raw_nodevalue_comb by default
+        
+Reminder of the params typical format
+    parent_params_comb = ('tau',)
+    node_params_comb = ('gamma','beta')
     
 """
 
 
 #with open(f'__experiment_1/parsed_data/tree.pickle', 'rb') as handle:
 #     TREE = pickle.load(handle)
-
-#Models example
-eu_du_pwu = [('Expected_Utility',     (1,1), (1,), raw_nodevalue_comb, softmax, ),
-             ('Discounted_Utillity',  (1,1), (1,), raw_nodevalue_comb, softmax, ),
-             ('Probability_Weighted', (1,1), (1,), raw_nodevalue_comb, softmax, )]
 
 
 
@@ -78,12 +78,10 @@ def best_path(map_, model):
 
     """
     
-    (_, node_params, parent_params, raw_nodevalue_func, parent_nodeprob_func) = model
-    
+    model_params = get_model_and_params(model) #Unpack model for node_value purposes
     TREE = map2tree(map_)  #Generate tree
-    value_summary = node_values(map_, node_params, parent_params, 
-                                raw_nodevalue_func,
-                                parent_nodeprob_func) #Get all of our values
+    
+    value_summary = node_values(map_, *model_params) #Get all of our values
     
     node = 0
     
@@ -247,9 +245,28 @@ def visualize_path(map_, path, ax):
 
 ###(gamma, beta, tau) --> ( (gamma, beta), (tau,) )
 
-eu_du_pwu = [('Expected_Utility',     (1,1), (1,), raw_nodevalue_comb, softmax, ),
-             ('Discounted_Utillity',  (1,1), (1,), raw_nodevalue_comb, softmax, ),
-             ('Probability_Weighted', (1,1), (1,), raw_nodevalue_comb, softmax, )]
+
+#Models example
+expected_utility_model = {'model_name': 'Expected_Utility',
+                          'node_params': (1,1), #gamma, beta
+                          'parent_params':(1,), #tau,
+                          'raw_nodevalue_func': raw_nodevalue_comb,
+                          'parent_nodeprob_func': softmax}
+
+discounted_utility_model = {'model_name': 'Discounted_Utility',
+                            'node_params': (1,1), #gamma, beta
+                            'parent_params':(1,), #tau,
+                            'raw_nodevalue_func': raw_nodevalue_comb,
+                            'parent_nodeprob_func': softmax}
+
+
+probability_weighted_model = {'model_name': 'Probability_Weighted',
+                              'node_params': (1,1), #gamma, beta
+                              'parent_params':(1,), #tau,
+                              'raw_nodevalue_func': raw_nodevalue_comb,
+                              'parent_nodeprob_func': softmax}
+
+eu_du_pwu = [expected_utility_model, discounted_utility_model, probability_weighted_model]
 
 def visualize_juxtaposed_best_paths(map_, models= eu_du_pwu):
     """
@@ -296,7 +313,7 @@ def visualize_juxtaposed_best_paths(map_, models= eu_du_pwu):
         #Draw the path on our maze
         visualize_path(map_, path, ax)
         #Label this maze
-        model_name = model[0]
+        model_name = model['model_name']
         ax.set_title(model_name)
 
     plt.show()
@@ -397,3 +414,5 @@ if __name__ == "__main__":
            (3,3,3,3,3,3,3,3,3,3,3),)
     
     visualize_juxtaposed_best_paths(Maze1)
+
+    #visualize_juxtaposed_best_paths(generate_spiral_maps(1)[0])

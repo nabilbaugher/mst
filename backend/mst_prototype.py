@@ -94,6 +94,9 @@ Overall representation:
         When calculating, we assume that the exit tile is equally likely to be in any of the seemingly black squares,
         even if we actually know where the exit tile is.
     
+Reminder of the params typical format
+    parent_params_comb = ('tau',)
+    node_params_comb = ('gamma','beta')
 """
 
 def map_builder(nrows, ncols, black, path, start, exit_=None):
@@ -716,14 +719,14 @@ def weight(p, beta):
     -------
     float
         Result of weighting: a probability in range [0,1]
-
+    
+    
     """
     
     return np.exp( -1 * (-np.log(p) )**beta )
 
 
 
-""" return raw node value BEFORE softmax being applied """
 
 ###Rather than creating multiple different models, 
 ###the combined value model is used to generalize all three: EU, DU, PWU

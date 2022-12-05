@@ -6,31 +6,83 @@ import random
 
 import loglikes
 
+from mst_prototype import raw_nodevalue_comb, softmax
+
 pp = pprint.PrettyPrinter(compact=False, width=90)
 
-with open(f'__experiment_1/parsed_data/tree.pickle', 'rb') as handle:
-    TREE = pickle.load(handle)
+#Data we don't have
+# with open(f'__experiment_1/parsed_data/tree.pickle', 'rb') as handle:
+#     TREE = pickle.load(handle)
 
-with open(f'__experiment_1/parsed_data/subject_decisions.pickle', 'rb') as handle:
-    # {sid: {world: {'nodes': [], 'path': []}}}
-    DECISIONS = pickle.load(handle)
+# with open(f'__experiment_1/parsed_data/subject_decisions.pickle', 'rb') as handle:
+#     # {sid: {world: {'nodes': [], 'path': []}}}
+#     DECISIONS = pickle.load(handle)
 
 
 def split_train_test_kfold(decisions_list, k=4):
-    """ k = 4 """
+    """
+    Splits our data (decisions) into k evenly sized, disjoint chunks ("splits")
+    To be used for cross-evaluation.
+
+    Parameters
+    ----------
+    decisions_list : list of tuples (str, int)
+        Each tuple represents one decision our player made, on one map: (map_, node)
+        To reach this node, our player has to have gone from its parent node, and chosen this option.
+        
+        Thus, this list in total represents every decision our player made.
+        
+    k : int, optional
+        Number of chunks we want to split our data into.
+
+    Yields
+    ------
+    train : list of tuples (str, int)
+        (k-1) chunks of the data, to be used for training a model.
+    test : TYPE
+        1 chunk of data, to be used for testing the model.
+        
+    Yields every combination of training and testing for our chunks.
+
+    """
 
     n = len(decisions_list) // k  # length of each split
-    splits = [decisions_list[i * n: (i + 1) * n] for i in range(k)]
+    splits = [decisions_list[i * n: (i + 1) * n] for i in range(k)] #Split data into chunks
 
-    for i in range(k):
-        train = sum([splits[j] for j in range(k) if j != i], [])
-        test = splits[i]
+    for i in range(k): #For each chunk, make a dataset where that chunk is testing, and the rest are training
+        test = splits[i] #Main chunk
+        train = sum([splits[j] for j in range(k) if j != i]) #Other chunks
+        
 
         yield train, test
 
 
 def split_train_test_rand(decisions_list, k=4):
-    """ 75% train, 25% test """
+    """
+    Similar to split_train_test_kfold, but we randomly select which data points go in the testing chunk.
+    To be used for cross-evaluation.
+
+    Parameters
+    ----------
+    decisions_list : list of tuples (str, int)
+        Each tuple represents one decision our player made, on one map: (map_, node)
+        To reach this node, our player has to have gone from its parent node, and chosen this option.
+        
+        Thus, this list in total represents every decision our player made.
+        
+    k : int, optional
+        Number of chunks we want to split our data into.
+
+    Yields
+    ------
+    train : list of tuples (str, int)
+        (k-1) chunks of the data, to be used for training a model.
+    test : TYPE
+        1 chunk of data, to be used for testing the model.
+        
+    Yields k different randomly-generated training/testing datasets.
+
+    """
 
     for _ in range(k):
         test = random.sample(decisions_list, k=len(decisions_list) // k)
@@ -39,18 +91,56 @@ def split_train_test_rand(decisions_list, k=4):
         yield train, test
 
 
+# model2parameters = {
+#     'Expected_Utility': [(tau, 1, 1) for tau in models.TAUS],
+#     'Discounted_Utility': [(round(tau, 3), round(gamma, 3), 1) for tau in models.TAUS for gamma in models.GAMMAS],
+#     'Probability_Weighted_Utility': [(round(tau, 3), 1, round(beta, 3)) for tau in models.TAUS for beta in
+#                                      models.BETAS]
+# }
+
+#{model_name: {'best_parameters': ((),()),
+#              'num_subjects_preferred':}}
+
+"""
+return model preference summary
+{model_name: number of subjects that prefer this model}
+"""
+
+#Models example
+expected_utility_model = {'model_name': 'Expected_Utility',
+                          'node_params': (1,1), #gamma, beta
+                          'parent_params':(1,), #tau,
+                          'raw_nodevalue_func': raw_nodevalue_comb,
+                          'parent_nodeprob_func': softmax}
+
+discounted_utility_model = {'model_name': 'Discounted_Utility',
+                            'node_params': (1,1), #gamma, beta
+                            'parent_params':(1,), #tau,
+                            'raw_nodevalue_func': raw_nodevalue_comb,
+                            'parent_nodeprob_func': softmax}
+
+
+probability_weighted_model = {'model_name': 'Probability_Weighted',
+                              'node_params': (1,1), #gamma, beta
+                              'parent_params':(1,), #tau,
+                              'raw_nodevalue_func': raw_nodevalue_comb,
+                              'parent_nodeprob_func': softmax}
+
 def model_preference():
     """
-    return model preference summary
-    {model_name: number of subjects that prefer this model}
-    """
+    Takes in several different types of models and evaluates how many subjects prefer each model.
+    For each subject, we use cross-evaluation to find which model type fits best: fit parameters using training data, then evaluate with testing.
+    
 
-    model2parameters = {
-        'Expected_Utility': [(tau, 1, 1) for tau in models.TAUS],
-        'Discounted_Utility': [(round(tau, 3), round(gamma, 3), 1) for tau in models.TAUS for gamma in models.GAMMAS],
-        'Probability_Weighted_Utility': [(round(tau, 3), 1, round(beta, 3)) for tau in models.TAUS for beta in
-                                         models.BETAS]
-    }
+    Returns
+    -------
+    model_preference : TYPE
+        DESCRIPTION.
+
+    """
+    
+
+
 
     model_preference = {}  # {model_name: number of subjects that prefer this model}
 
@@ -78,6 +168,8 @@ def model_preference():
 
     pp.pprint(model_preference)
     return model_preference
+
+
 
 
 if __name__ == "__main__":
