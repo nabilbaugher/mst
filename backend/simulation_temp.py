@@ -257,24 +257,6 @@ def visualize_path(maze, path, ax):
 
 
 #Models example
-expected_utility_model = {'model_name': 'Expected_Utility',
-                          'node_params': (1,1), #gamma, beta
-                          'parent_params':(1,), #tau,
-                          'raw_nodevalue_func': raw_nodevalue_comb,
-                          'parent_nodeprob_func': softmax}
-
-discounted_utility_model = {'model_name': 'Discounted_Utility',
-                            'node_params': (1,1), #gamma, beta
-                            'parent_params':(1,), #tau,
-                            'raw_nodevalue_func': raw_nodevalue_comb,
-                            'parent_nodeprob_func': softmax}
-
-
-probability_weighted_model = {'model_name': 'Probability_Weighted',
-                              'node_params': (1,1), #gamma, beta
-                              'parent_params':(1,), #tau,
-                              'raw_nodevalue_func': raw_nodevalue_comb,
-                              'parent_nodeprob_func': softmax}
 
 expected_utility_model = DecisionModel(model_name="Expected_Utility")
 discounted_utility_model = DecisionModel(model_name="Discounted_Utility")
@@ -292,23 +274,27 @@ def visualize_juxtaposed_best_paths(maze, models= eu_du_pwu):
 
     Parameters
     ----------
-    map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
-            -tuple of tuples    has length = nrows, 
-            -each tuple of ints has length = ncols.
-            
-            Our "maze" the player is moving through.
+    maze : Maze object, our maze to navigate. Stores a maze.map object:
         
-    models : list of tuples 
-         Each tuple of the form (str, function, function, tuple of floats, tuple of floats)
-             str is the name of the model
-             
-             first tuple has the parameters for node value
-             second tuple has the parameters for node probability
-             
-             first function is used to compute node value
-             second function is used to compute node probability
-             
-         Each tuple represents a model we want to try out.
+        map: tuple of tuples of ints - represents a grid in the shape (maze.nrows, maze.ncols)
+               -tuple of tuples    has length = nrows, 
+               -each tuple of ints has length = ncols.
+               
+               Our "maze" the player is moving through.
+        
+    models : list of models
+         model : DecisionModel object, representing one model for player-decisions.
+         
+             Contains several variables:
+                 str is the name of the model
+                 
+                 first tuple has the parameters for node value
+                 second tuple has the parameters for node probability
+                 
+                 first function is used to compute node value
+                 second function is used to compute node probability
+                 
+             Fully describes a single model for player action.
 
     Returns
     -------

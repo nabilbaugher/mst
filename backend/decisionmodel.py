@@ -186,7 +186,41 @@ def raw_nodevalue_comb(maze, node, gamma=1, beta=1):
 
 
 
+  
+def generate_combinations(array):
+    """
+    For n different sub-arrays, find every way to draw one element from each array.
+    
+    For example, [a,b] and [1,2] make [ [a,1], [a, 2], [b,1], [b,2]
+    
+    Parameters
+    ----------
+    array: list of lists 
+        Our outer list contains multiple arrays of elements that we want to use in our combination.
+        
+        We will be pulling one element from each inner list to get our combinations.
+    
+    Returns
+    -------
+    combinations: list of lists
+        Each list is a unique combination of elements: one from each of our starting arrays.
 
+    """
+    combinations = []
+    
+    if len(array)==0: #Base case: no arrays, no combinations.
+        return [[]]
+    
+    
+    for elem in array[0]: #Otherwise, recurse: we iterate over our first array
+        
+        future_combinations = generate_combinations(array[1:]) #Iterate over the next array, then the next one...
+        
+        for comb in future_combinations: #We've got all of our results: combine them with our current element
+            
+            combinations.append( [elem] + comb ) #Assemble full combination
+            
+    return combinations
 
 
 
@@ -203,6 +237,10 @@ class DecisionModel:
                  node_params=(1,1), parent_params=(1,), 
                  raw_nodevalue_func=raw_nodevalue_comb, parent_nodeprob_func=softmax):
         
+        """
+        model_name: str
+            Contains the name of this model. Usually, the model class it is stored in.
+        """
         self.model_name = model_name
         
         """
@@ -228,6 +266,25 @@ class DecisionModel:
         """
         self.parent_nodeprob_func = parent_nodeprob_func 
     
+    def model_copy(self):
+        """
+        Copy this model.
+
+        """
+        return DecisionModel(self.model_name, self.node_params, self.parent_params, 
+                             self.raw_nodevalue_func, self.parent_nodeprob_func)
+    
+    def update_params(self, node_params=None, parent_params=None):
+        """
+            Update our parameters based on what we are given.
+            
+            View __init__ for description.
+        """
+        if node_params:
+            self.node_params = node_params
+        if parent_params:
+            self.parent_params = parent_params
+            
     
     def node_values(self, maze, parent=None):
         """
@@ -290,4 +347,127 @@ class DecisionModel:
         
         return values_summary
     
+
+
+
+
+class DecisionModelRange(DecisionModel):
+    """A model class, with a range of possible parameters."""
+    
+    def __init__(self, model_name, 
+                 node_params_ranges, parent_params_ranges, 
+                 raw_nodevalue_func=raw_nodevalue_comb, parent_nodeprob_func=softmax):
+        
+        super.__init__(self, model_name, raw_nodevalue_func=raw_nodevalue_comb, parent_nodeprob_func=softmax)
+        #Preserve usual DecisionModel stuff
+        
+        #Add ranges
+        self.node_params_ranges = node_params_ranges
+        self.parent_params_ranges = parent_params_ranges
+        
+    def gen_model(self, node_params, parent_params):
+        """
+        Create new model using parameters!
+        """
+        
+        new_model = self.model_copy() #Create copy of this model!
+        new_model.update_params(node_params, parent_params)
+        
+        return new_model
+    
+    def gen_node_param_range(self):
+        """
+        Give all values for each parameter, for node values
+
+        Returns
+        -------
+        list of lists
+            Each inner list represents a different parameter.
+            The floats contained within are values for that parameter.
+
+        """
+        return [ list( np.linspace(*param_range) )
+                for param_range in self.node_params_ranges ]
+    
+    def gen_parent_param_range(self):
+        """
+        Give all values for each parameter, for node values
+
+        Returns
+        -------
+        list of lists
+            Each inner list represents a different parameter.
+            The floats contained within are values for that parameter.
+
+        """
+        return [ list( np.linspace(*param_range) )
+                for param_range in self.parent_params_ranges ]
+    
+    def gen_models(self):
+        """
+        Generate every possible model based on the parameter ranges specified.
+
+        Returns
+        -------
+        models : list of DecisionModel objects.
+            All of our models.
+
+        """
+        node_param_arrays =   self.gen_node_param_range()
+        
+        parent_param_arrays = self.gen_parent_param_range()
+        
+        all_node_params = generate_combinations(node_param_arrays)
+        all_parent_params = generate_combinations(parent_param_arrays)
+        
+        models = []
+        
+        #Generate all of the models we want
+        
+        for node_params in all_node_params: #Every parameter combo creates its own model
+            for parent_params in all_parent_params:
+        
+                new_model = self.gen_model(node_params, parent_params)
+                
+                models.append(new_model)
+                
+        return models
+                
+    def fit_parameters(self, decisions_list, evaluation_function):
+        """
+        Select the set of parameters that gives this function the best outcome for the evaluation function. 
+
+        Parameters
+        ----------
+        decisions_list : list of tuples (str, int)
+            Each tuple represents one decision our player made, on one map: (map_, node)
+            To reach this node, our player has to have gone from its parent node, and chosen this option.
+            
+            Thus, this list in total represents every decision our player made.
+            
+        evaluation_function : function
+            Function that helps us determine which model is best.
+            Assumed to take in (decision_list, model). 
+
+        Returns
+        -------
+        model: DecisionModel object
+            Model which performed best on the given task.
+
+        """
+        
+        models = self.gen_models()
+        
+        performance = {}
+        
+        for index, model in enumerate(models):
+            
+            evaluation = evaluation_function(decisions_list,  model ) #Get model performance
+            
+            performance[index] = evaluation #Save each value
+            
+        best_index = max( performance, key= performance[index] ) #Find the best model
+        
+        return models[best_index]
+            
 
