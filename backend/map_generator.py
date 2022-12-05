@@ -1,6 +1,11 @@
 import matplotlib.pyplot as plt
-from mst_prototype import map_builder, map_visualizer
-from simulation import visualize_maze, visualize_juxtaposed_best_paths, map2tree
+
+##Changing these: sorry! -Shaunticlair, 12/5/22, 6:12am
+#from mst_prototype import map_builder, map_visualizer
+from maze import map_builder, map_visualizer, maze2tree
+
+#Visualize_maze works fine with map
+from simulation import visualize_maze, visualize_juxtaposed_best_paths
 import numpy as np
 import copy
 import random

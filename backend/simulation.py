@@ -6,10 +6,13 @@ import pickle
 import time
 import itertools
 
-from mst_prototype import map2tree, node_values, map_builder
-from mst_prototype import raw_nodevalue_comb, softmax
-from loglikes import get_model_and_params
+# from mst_prototype import map2tree, node_values, map_builder
+# from mst_prototype import raw_nodevalue_comb, softmax
+# from loglikes import get_model_and_params
 # from map_generator import generate_spiral_maps
+
+from maze import Maze, maze2tree, grid2maze
+from decisionmodel import DecisionModel
 
 pp = pprint.PrettyPrinter(compact=False)
 
@@ -47,19 +50,23 @@ Reminder of the params typical format
 
 
 
-def best_path(map_, model):
+def best_path(maze, model):
     """
     Finds the best path, based on our nodevalue function and parameters.
 
     Parameters
     ----------
-    map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
-            -tuple of tuples    has length = nrows, 
-            -each tuple of ints has length = ncols.
+    maze : Maze object, our maze to navigate. Stores a maze.map object:
+        
+        map: tuple of tuples of ints - represents a grid in the shape (maze.nrows, maze.ncols)
+               -tuple of tuples    has length = nrows, 
+               -each tuple of ints has length = ncols.
+               
+               Our "maze" the player is moving through.
             
-            Our "maze" the player is moving through.
-            
-    model : tuple of the form (str, function, function, tuple of floats, tuple of floats)
+    model : DecisionModel object, representing one model for player-decisions.
+    
+        Contains several variables:
             str is the name of the model
             
             first tuple has the parameters for node value
@@ -79,10 +86,10 @@ def best_path(map_, model):
 
     """
     
-    model_params = get_model_and_params(model) #Unpack model for node_value purposes
-    TREE = map2tree(map_)  #Generate tree
+    # model_params = get_model_and_params(model) #Unpack model for node_value purposes
+    TREE = maze2tree(maze)  #Generate tree
     
-    value_summary = node_values(map_, *model_params) #Get all of our values
+    value_summary = model.node_values(maze) #Get all of our values
     
     node = 0
     
@@ -133,18 +140,20 @@ def best_path(map_, model):
 #     lines = f.readlines()
 #lines=maze
 
-def visualize_maze(map_, ax=None):
+def visualize_maze(maze, ax=None):
     """
     Turns a map representation into a human-interpretable image. 
     Modifies the input ax object, which is what we draw the map onto.
 
     Parameters
     ----------
-    map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
-            -tuple of tuples    has length = nrows, 
-            -each tuple of ints has length = ncols.
-            
-            Our "maze" the player is moving through.
+    maze : Maze object, our maze to navigate. Stores a maze.map object:
+        
+        map: tuple of tuples of ints - represents a grid in the shape (maze.nrows, maze.ncols)
+               -tuple of tuples    has length = nrows, 
+               -each tuple of ints has length = ncols.
+               
+               Our "maze" the player is moving through.
             
     ax : matplotlib.axes._subplots.AxesSubplot, optional
         The plot on which we will be drawing our map.
@@ -159,11 +168,10 @@ def visualize_maze(map_, ax=None):
         _, ax = plt.subplots(1)
 
 
-    nrows, ncols = len(map_), len(map_[0])
 
 
     #Rows count going down: we have to reverse our map order.
-    maze1=map_[::-1]
+    maze1=maze.map[::-1]
     
     #pp.pprint(maze1)
 
@@ -179,13 +187,13 @@ def visualize_maze(map_, ax=None):
 
     # Major ticks positions
     #+.5 so they're centered on each square
-    ax.set_xticks([x+0.5 for x in range(ncols)])
-    ax.set_yticks([y+0.5 for y in range(nrows)])
+    ax.set_xticks([x+0.5 for x in range(maze.ncols)])
+    ax.set_yticks([y+0.5 for y in range(maze.nrows)])
     
     
     # Major ticks label (for readability of plot, (0,0) at top left)
-    ax.set_xticklabels([y for y in range(ncols)])
-    ax.set_yticklabels([y for y in range(nrows)][::-1]) #Reverse order because rows count down, not up
+    ax.set_xticklabels([y for y in range(maze.ncols)])
+    ax.set_yticklabels([y for y in range(maze.nrows)][::-1]) #Reverse order because rows count down, not up
 
 
 # with open(f'__experiment_1/mazes/{world}.txt') as f:
@@ -193,18 +201,20 @@ def visualize_maze(map_, ax=None):
 #     nrows = int(f.readline())
 
 
-def visualize_path(map_, path, ax):
+def visualize_path(maze, path, ax):
     """
     Takes a visual map, and draws a path on that map from start to end. 
     The visual, represented as ax, is modified in-place: it doesn't have to be returned.
 
     Parameters
     ----------
-    map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
-            -tuple of tuples    has length = nrows, 
-            -each tuple of ints has length = ncols.
-            
-            Our "maze" the player is moving through.
+    maze : Maze object, our maze to navigate. Stores a maze.map object:
+        
+        map: tuple of tuples of ints - represents a grid in the shape (maze.nrows, maze.ncols)
+               -tuple of tuples    has length = nrows, 
+               -each tuple of ints has length = ncols.
+               
+               Our "maze" the player is moving through.
             
     path : list of ints
         List of nodes, from start to end of the path.
@@ -219,7 +229,6 @@ def visualize_path(map_, path, ax):
     """
     #Ignore first position on path
     path=path[1:]
-    nrows, ncols = len(map_), len(map_[0])
 
     def jitter(arr):
         """Makes our lines look a little wobbly."""
@@ -227,14 +236,14 @@ def visualize_path(map_, path, ax):
         return arr + np.random.randn(len(arr)) * stdev
 
     #Get a tree
-    TREE=map2tree(map_)
+    TREE=maze2tree(maze)
     
     
     for node in path[1:]: #Go through each node
     
         parent_to_child_path = TREE[node]['path_from_par']
     
-        c, r = zip(*[ (c + 0.5, nrows - r - 0.5)  #Offset by 0.5 centers our path lines on each grid square
+        c, r = zip(*[ (c + 0.5, maze.nrows - r - 0.5)  #Offset by 0.5 centers our path lines on each grid square
                      for r,c in parent_to_child_path]) #Each step from the parent to child
         
         c, r = jitter(c), jitter(r) #Make each step a little wobbly for visuals
@@ -248,57 +257,53 @@ def visualize_path(map_, path, ax):
 
 
 #Models example
-expected_utility_model = {'model_name': 'Expected_Utility',
-                          'node_params': (1,1), #gamma, beta
-                          'parent_params':(1,), #tau,
-                          'raw_nodevalue_func': raw_nodevalue_comb,
-                          'parent_nodeprob_func': softmax}
 
-discounted_utility_model = {'model_name': 'Discounted_Utility',
-                            'node_params': (1,1), #gamma, beta
-                            'parent_params':(1,), #tau,
-                            'raw_nodevalue_func': raw_nodevalue_comb,
-                            'parent_nodeprob_func': softmax}
+expected_utility_model = DecisionModel(model_name="Expected_Utility")
+discounted_utility_model = DecisionModel(model_name="Discounted_Utility")
+probability_weighted_model = DecisionModel(model_name="Probability_Weighted")
 
-
-probability_weighted_model = {'model_name': 'Probability_Weighted',
-                              'node_params': (1,1), #gamma, beta
-                              'parent_params':(1,), #tau,
-                              'raw_nodevalue_func': raw_nodevalue_comb,
-                              'parent_nodeprob_func': softmax}
 
 eu_du_pwu = [expected_utility_model, discounted_utility_model, probability_weighted_model]
 
-def visualize_juxtaposed_best_paths(map_, models= eu_du_pwu):
+
+
+def visualize_juxtaposed_best_paths(maze, models= eu_du_pwu):
     """
     This function allows us to visually compare the "best paths" chosen by multiple different
     value functions.
 
     Parameters
     ----------
-    map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
-            -tuple of tuples    has length = nrows, 
-            -each tuple of ints has length = ncols.
-            
-            Our "maze" the player is moving through.
+    maze : Maze object, our maze to navigate. Stores a maze.map object:
         
-    models : list of tuples 
-         Each tuple of the form (str, function, function, tuple of floats, tuple of floats)
-             str is the name of the model
-             
-             first tuple has the parameters for node value
-             second tuple has the parameters for node probability
-             
-             first function is used to compute node value
-             second function is used to compute node probability
-             
-         Each tuple represents a model we want to try out.
+        map: tuple of tuples of ints - represents a grid in the shape (maze.nrows, maze.ncols)
+               -tuple of tuples    has length = nrows, 
+               -each tuple of ints has length = ncols.
+               
+               Our "maze" the player is moving through.
+        
+    models : list of models
+         model : DecisionModel object, representing one model for player-decisions.
+         
+             Contains several variables:
+                 str is the name of the model
+                 
+                 first tuple has the parameters for node value
+                 second tuple has the parameters for node probability
+                 
+                 first function is used to compute node value
+                 second function is used to compute node probability
+                 
+             Fully describes a single model for player action.
 
     Returns
     -------
     None.
 
     """
+    if type(maze)==tuple: #Convert to desired format
+        maze=Maze(maze)
+        
     num_funcs = len(models)
     #Empty plot to draw on
     _, axs = plt.subplots(1, num_funcs)
@@ -308,13 +313,13 @@ def visualize_juxtaposed_best_paths(map_, models= eu_du_pwu):
     for ax, model in zip(axs, models):
         
         #Get the best path
-        path = best_path(map_, model )
+        path = best_path(maze, model )
         #Draw our maze
-        visualize_maze(map_, ax)
+        visualize_maze(maze, ax)
         #Draw the path on our maze
-        visualize_path(map_, path, ax)
+        visualize_path(maze, path, ax)
         #Label this maze
-        model_name = model['model_name']
+        model_name = model.model_name
         ax.set_title(model_name)
 
     plt.show()
@@ -414,6 +419,6 @@ if __name__ == "__main__":
            (3,0, 0, 3, 3, 0, 0, 3, 3, 3, 3),
            (3,3,3,3,3,3,3,3,3,3,3),)
     
-    visualize_juxtaposed_best_paths(Maze2)
+    visualize_juxtaposed_best_paths(grid2maze(Maze2))
 
     #visualize_juxtaposed_best_paths(generate_spiral_maps(1)[0])
