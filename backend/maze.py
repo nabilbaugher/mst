@@ -10,6 +10,14 @@ from collections import deque
 
 
 """
+The goal of this file is to build a Maze representation that can be used by other files. This creates an 
+environment in which we can do the Maze Search Task.
+
+A maze is a useful and simplified way to observe how humans make decisions and judgements. This file creates 
+a system the subjects are able to interact with, and the experimenters can analyze.
+
+========================================================
+
 class Maze():
     The class representing our maze: takes our base grid, and adds some functionality to it.
     
