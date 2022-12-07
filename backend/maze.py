@@ -7,6 +7,8 @@ from collections import deque
 
 
 
+
+
 """
 class Maze():
     The class representing our maze: takes our base grid, and adds some functionality to it.
@@ -113,6 +115,10 @@ class Maze:
     
     def __getitem__(self, index):
         return self.map[index]
+    
+    def __iter__(self):
+        for row in self.map:
+            yield(row)
     
     def __len__(self):
         return len(self.map)
@@ -328,6 +334,51 @@ class Maze:
     
         return new_observations
     
+    def valid_pos(self, pos):
+        """
+        Check whether a given position is valid on this map.
+        """
+        r,c = pos
+        
+        #Within bounds
+        r_valid = (r>=0) and (r<=self.nrows-1)
+        c_valid = (c>=0) and (c<=self.ncols-1)
+        #Not within a wall
+        not_in_wall = (self.map[r][c]!=3)
+        
+        return r_valid and c_valid and not_in_wall #All three must be met
+    
+    def move(self, pos, shift):
+        """
+        Try to move on the map.
+        
+        Parameters
+        ----------
+        pos : tuple (int,int) 
+            Previous position on map.
+        shift : tuple (int,int) 
+            How we move from our old position.
+            
+        Returns
+        -------
+        pos: if we can move, it returns new_pos. else, we stay in the same place. 
+        
+        Raise error if old_pos is invalid.
+        """
+        r,c   = pos
+        rr,cc   = shift #Move positions
+        
+        new_pos = ( r+rr, c+cc )
+        
+        if not self.valid_pos(pos): #We need to at least start on a valid square!
+            raise ValueError("Original position is not valid! We cannot be standing on this square.")
+        
+        if not self.valid_pos(new_pos): #If new square isn't valid, stay on old square.
+            return pos
+        
+        return new_pos #Otherwise, move!
+        
+    
     def update_map(self, old_pos, new_pos):
         """
         
@@ -412,30 +463,26 @@ class Maze:
     
         while agenda: #Still agendas left - incomplete paths.
             path = agenda.popleft() #Get top of agenda
-            r_, c_ = path[-1] #Current position
+            curr_pos = path[-1] #Current position
     
-            for rr, cc in ((0 ,1), (0 ,-1), (1 ,0), (-1 ,0)): #Possible movement directions
+            for shift in ((0 ,1), (0 ,-1), (1 ,0), (-1 ,0)): #Possible movement directions
                 
-                within_bounds = lambda x, lower, upper: max(min(x,upper), lower)
-            
-                #Make sure r and c are between bounds
-                r = within_bounds(r_ +rr,    0, self.nrows-1)
-                c = within_bounds(c_ +cc,    0, self.ncols-1)
+                #Try to move in this direction
+                new_pos = self.move(curr_pos,shift)
     
-                # If this is a wall(3): can't move through
                 # If in path: don't want to backtrack
-                if self.map[r][c] == 3 or (r, c) in path: #Don't include this direction!
+                if new_pos in path: #Don't include this direction!
                     continue
                 
                 #Do we reveal a black square?
-                observations = self.new_observations( (r ,c) )
+                observations = self.new_observations( new_pos )
     
                 if observations: #If we reveal a black square, then we're finished.
                     #Show the whole path, paired with the squares which are revealed.
-                    paths.append( ( path + [(r ,c)], observations ) )
+                    paths.append( ( path + [new_pos], observations ) )
                     
                 else: #No observation: path not ended, keep going.
-                    agenda.append(path + [(r ,c)])
+                    agenda.append(path + [new_pos])
 
                     
         return paths
