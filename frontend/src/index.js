@@ -106,11 +106,11 @@ class GridSystem {
         this.original_playerX = playerX;
         this.original_playerY = playerY;
 
-        this.uiContext = this.#getContext(420, 580, '#000');
+        this.uiContext = this.#getContext(420, 400, '#000');
         //this.uiContext = this.#getContext(720, 580, '#000');
         this.outlineContext = this.#getContext(0, 0, '#444');
         this.topContext = this.#getContext(0, 0, '#111', true);
-        this.cellSize = 40;
+        this.cellSize = 30;
         this.padding = 2;
         this.player = { x: playerX, y: playerY, color: 'orange' };
         // this.matrix[playerY][playerX] = 2;
@@ -438,6 +438,10 @@ class GridSystem {
     showEndScreen() {
         // Clear screen
         document.body.innerHTML = "";
+        const element = document.getElementById('instruction_string');
+        if (element) {
+            element.remove();
+        }
 
         // Show text
         const para = document.createElement("p");
@@ -591,10 +595,8 @@ class GridSystem {
 
 
         const para = document.createElement("p");
-        //const instruction_string =  git
-        para.innerHTML = "Thank you for participating in our survey! You will be presented with 10 different types of mazes. Use the arrow keys → ← ↑ ↓ to move until you find the exit and win! The exit will be in a gray square. (Try to avoid refreshing the page, mazes will reset) </br>";
-        para.innerHTML += "Current Trial: " + String(this.current_trial_number);
-        //para.textContent = instruction_string;
+        const instruction_string =  "Thank you for participating in our survey! You will be presented with 30 different types of mazes. Use the arrow keys → ← ↑ ↓ to move until you find the exit and win! The exit will be in a gray square, revealed to be maroon. (Try to avoid refreshing the page, mazes will reset) Current Trial: " + String(this.current_trial_number);
+        para.textContent = instruction_string;
         para.id = "instruction_string";
         para.style.position = 'absolute';
         para.style.left = "10%";
