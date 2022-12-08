@@ -15,7 +15,7 @@ ROWS, COLS, BUFFER = 15, 15, 5
 INTERVAL_RANGE = (8, 12)
 OFFSHOOT_LENGTH_RANGE = (3, 7)
 
-def generate_spiral_maps(nmaps, nrows=ROWS, ncols=COLS, buffer=BUFFER, interval_range=INTERVAL_RANGE, offshoot_length_range=OFFSHOOT_LENGTH_RANGE):
+def generate_spiral_maps(nmaps, trick=True, nrows=ROWS, ncols=COLS, buffer=BUFFER, interval_range=INTERVAL_RANGE, offshoot_length_range=OFFSHOOT_LENGTH_RANGE):
     """
     Generates a set of trick maps that all follow the same path to the goal
     but have different extraneous paths.
@@ -32,7 +32,7 @@ def generate_spiral_maps(nmaps, nrows=ROWS, ncols=COLS, buffer=BUFFER, interval_
     base_path, is_done = generate_spiral_base_path(nrows, ncols, buffer)
     trick_maps = []
     for _ in range(nmaps):
-        trick_maps.append(generate_spiral_map_with_offshoots(base_path, is_done, nrows, ncols, interval_range, offshoot_length_range))
+        trick_maps.append(generate_spiral_map_with_offshoots(base_path, is_done, trick, nrows, ncols, interval_range, offshoot_length_range))
     return trick_maps
 
 
@@ -224,7 +224,7 @@ def generate_spiral_base_path(nrows=ROWS, ncols=COLS, buffer=BUFFER):
     return (black, path, start), is_done
     
 
-def generate_spiral_map_with_offshoots(base_path, is_done, nrows=ROWS, ncols=COLS, interval_range=INTERVAL_RANGE, offshoot_length_range=OFFSHOOT_LENGTH_RANGE):
+def generate_spiral_map_with_offshoots(base_path, is_done, trick, nrows=ROWS, ncols=COLS, interval_range=INTERVAL_RANGE, offshoot_length_range=OFFSHOOT_LENGTH_RANGE):
     """
     Generates a map with the same path as the base path but with
     a few offshoot paths that don't lead to the goal.
@@ -270,7 +270,8 @@ def generate_spiral_map_with_offshoots(base_path, is_done, nrows=ROWS, ncols=COL
     
     black, path, start = base_path
     black, path = black.copy(), path.copy()
-    exit_ = random.choice(black)
+    if trick:
+        exit_ = random.choice(black)
     route = path + black
     steps_since_last_offshoot = 0
 
@@ -320,6 +321,9 @@ def generate_spiral_map_with_offshoots(base_path, is_done, nrows=ROWS, ncols=COL
     # visualize_maze(map_builder(nrows, ncols, black, path, start))
     # plt.show()
     
+    if not trick:
+        exit_ = random.choice(black)
+    
     return map_builder(nrows, ncols, black, path, start, exit_=exit_)
 
 
@@ -327,12 +331,19 @@ if __name__ == "__main__":
     # pass
     # testing area
     # generate_spiral_maps(1)
-    for i, maze in enumerate(generate_spiral_maps(10)):
+    for i, maze in enumerate(generate_spiral_maps(7, trick=True)):
         print('const maze_' + str(i) + ' = [')
         for row in maze:
             print('\t' + str(list(row)))
         print('];\n')
-        # visualize_maze(maze)
+        
+    for i, maze in enumerate(generate_spiral_maps(8, trick=False)):
+        print('const maze_' + str(i+7) + ' = [')
+        for row in maze:
+            print('\t' + str(list(row)))
+        print('];\n')
+        # maze_obj = {'map': maze, 'nrows': len(maze), 'ncols': len(maze[0])}
+        # visualize_maze(maze_obj)
         # visualize_juxtaposed_best_paths(maze)
         # plt.show()
         # tree = map2tree(maze)
