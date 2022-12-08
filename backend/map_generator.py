@@ -331,16 +331,16 @@ if __name__ == "__main__":
     # pass
     # testing area
     # generate_spiral_maps(1)
-    for i, maze in enumerate(generate_spiral_maps(7, trick=True)):
+    for i, maze in enumerate(generate_spiral_maps(15, trick=True)):
         print('const maze_' + str(i) + ' = [')
         for row in maze:
-            print('\t' + str(list(row)))
+            print('\t' + str(list(row)) + ',')
         print('];\n')
         
-    for i, maze in enumerate(generate_spiral_maps(8, trick=False)):
-        print('const maze_' + str(i+7) + ' = [')
+    for i, maze in enumerate(generate_spiral_maps(15, trick=False)):
+        print('const maze_' + str(i+15) + ' = [')
         for row in maze:
-            print('\t' + str(list(row)))
+            print('\t' + str(list(row)) + ',')
         print('];\n')
         # maze_obj = {'map': maze, 'nrows': len(maze), 'ncols': len(maze[0])}
         # visualize_maze(maze_obj)
