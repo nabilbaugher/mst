@@ -291,8 +291,8 @@ class GridSystem {
     }
 
     #update_map() {
-        let observations = this.#newObservations(); //Get observations
-        //Update map to reflect observations
+        let observations = this.#newObservations(); // Get observations
+        // Update map to reflect observations
         for (let i = 0; i < this.matrix.length; i++) {
             for (let j = 0; j < this.matrix[i].length; j++) {
                 for (let k = 0; k < observations.length; k++) {
@@ -610,7 +610,7 @@ class GridSystem {
                 const color_map = {
                     0: '#9c9c9c',
                     1: 'white',
-                    2: '#d074a4',
+                    2: '#9c9c9c', // exit colored like a black square
                     3: '#b0943d',
                     4: 'white',
                     5: '#a1c38c',
