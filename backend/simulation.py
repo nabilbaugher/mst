@@ -184,7 +184,7 @@ def visualize_maze(maze, ax=None):
     #Draw maze using a mesh
     ax.pcolormesh(maze1, edgecolors='lightgrey', linewidth=1, cmap=cmap, norm=norm)
     ax.set_aspect('equal')
-
+    
 
     # Major ticks positions
     #+.5 so they're centered on each square
