@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-import styled from 'styled-components';
 
 import { createClient } from '@supabase/supabase-js';
 import { v1 as uuid } from 'uuid';
@@ -566,7 +565,7 @@ class GridSystem {
 
     nextTrialClick() {
         if (this.player_won == true) {
-            this.player_won == false;
+            this.player_won = false;
             this.resetBoardNewMaze();
         }
         else {
@@ -622,7 +621,7 @@ class GridSystem {
                 const color_map = {
                     0: '#9c9c9c',
                     1: 'white',
-                    2: '#d074a4',
+                    2: '#9c9c9c',
                     3: '#b0943d',
                     4: 'white',
                     5: '#a1c38c',
