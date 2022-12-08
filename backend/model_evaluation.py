@@ -5,15 +5,28 @@ import matplotlib.pyplot as plt
 import random
 
 
-
+#Maze representation
 from maze import Maze, maze2tree, grid2maze
+#Models of human decision-making
 from decisionmodel import DecisionModel, DecisionModelRange, raw_nodevalue_comb, softmax
+#Converting data into our desired formats.
+#import parser
+from data_parser import get_csv, convert_data
 
 pp = pprint.PrettyPrinter(compact=False, width=90)
 
 
 
 """
+The goal of this file is to evaluate our models for decision-making. It combines three things:
+    1. The maze itself,
+    2. The model - how we expect humans to behave in the maze,
+    3. Real data - how humans actually behave in the maze
+    
+    Using these three pieces, we can evaluate which models best reflect how humans actually make decisions.
+
+========================================================
+
 A short summary of the various functions in this file:
     
     avg_log_likelihood_decisions(decisions_list,  model ): return avg_loglike
@@ -305,3 +318,7 @@ eu_model_class = DecisionModelRange(model_name= 'Expected_Utility',
                                     node_params_ranges   = ((0,1,10), (0,1,10)),
                                     parent_params_ranges = ((0,1,10),)
                                     )
+
+
+if __name__ == "__main__":
+    pass

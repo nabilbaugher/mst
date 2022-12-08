@@ -9,6 +9,27 @@ from collections import deque
 from maze import Maze, maze2tree, grid2maze
 
 """
+The goal of this file is to create the DecisionModel and DecisionModelRange classes. Why do we need this classes?
+
+Our focus is the Maze Search Task. This task is used partly to try to figure out how humans make decisions, 
+in a controlled environment (i.e., the maze).
+
+To figure out this decision-making process, we create some of our "best guesses" as to how humans make decisions.
+These guesses are *models* that mathematically represents one explanation for human behavior.
+
+We try to fit our models to human decision-making, to improve them. By seeing which model holds up
+best on new data, we can see which models more accurately reflect how humans think.
+
+Each DecisionModel object is one of the models we're trying out, with its own parameters.
+
+DecisionModelRange describes a whole group of similar models, which we can call a "model class".
+(Here, the use of the word 'class' is separate from the Python meaning of class.)
+
+These classes are built-in with functions that make it easier to find the best
+model for human behavior.
+
+========================================================
+
 A short summary of the various functions in this file:
     
     softmax(values, tau): return softvals
