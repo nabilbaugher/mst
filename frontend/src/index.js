@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-//import styled from 'styled-components';
+import styled from 'styled-components';
 
 import { createClient } from '@supabase/supabase-js';
 import { v1 as uuid } from 'uuid';
@@ -27,15 +27,15 @@ reportWebVitals();
 
 class GridSystem {
     constructor(matrices) {
-        console.log('matrices');
-        console.log(matrices);
+        // console.log('matrices');
+        // console.log(matrices);
         this.matrices = matrices;
         // We start with the first matrix in matrices
         this.matrix = JSON.parse(JSON.stringify(matrices[0]));
-        
+
         this.resetBoardNewMaze = this.resetBoardNewMaze.bind(this);
         this.setUpHelper = this.setUpHelper.bind(this);
-       // this.render = this.render.bind(this);
+        // this.render = this.render.bind(this);
 
         // Generate a random user ID for current user
         // Note: Currently, if one user refreshes the page, they will be considered a different user
@@ -48,14 +48,14 @@ class GridSystem {
         // Reset the current matrix and make this.matrices = this.matrices[1:]
         // So if we take the first element in matrices matrices[0], it will give
         // us the next maze in our sequence
-        console.log('this.matrices');
-        console.log(this.matrices);
-        
+        // console.log('this.matrices');
+        // console.log(this.matrices);
+
         this.matrices = this.matrices.slice(1, this.matrices.length);
         this.matrix = JSON.parse(JSON.stringify(this.matrices[0]));
 
-        console.log('this.matrices');
-        console.log(this.matrices);
+        // console.log('this.matrices');
+        // console.log(this.matrices);
 
 
         //this.setUpHelper = this.setUpHelper.bind(this);
@@ -73,18 +73,14 @@ class GridSystem {
 
         this.player_won = false;
 
-        console.log('this.matrix in setUpHelper');
-        console.log(this.matrix);
-
         for (let row = 0; row < this.matrix.length; row++) {
             for (let col = 0; col < this.matrix[row].length; col++) {
-                if (this.matrix[row][col] == 5) {
+                if (this.matrix[row][col] === 5) {
                     playerX = col;
                     playerY = row;
                 }
             }
         }
-        console.log('coordinates: ' + playerX + ' ' + playerY);
 
         // Trying to keep track of original player location,
         // Might need it later for multiple mazes in a row
@@ -146,7 +142,7 @@ class GridSystem {
         */
         const new_square_val = this.matrix[this.player.y + y][this.player.x + x];
         const curr_square_val = this.matrix[this.player.y][this.player.x];
-        console.log(curr_square_val);
+
         if (curr_square_val === 2) {
             // Already won
             return false;
@@ -177,48 +173,45 @@ class GridSystem {
             const is_valid = this.#isValidMove(-1, 0);
             if (is_valid) {
                 this.#updateMatrix(this.player.y, this.player.x, 6);
-                if (this.player_won == false) {
+                if (this.player_won === false) {
                     this.#updateMatrix(this.player.y, this.player.x - 1, 8);
                 }
                 this.player.x--;
                 this.current_keystroke_sequence.push('left');
-                this.render();
             }
         } else if (keyCode === 39) {
             const is_valid = this.#isValidMove(1, 0);
             if (is_valid) {
                 this.#updateMatrix(this.player.y, this.player.x, 6);
-                if (this.player_won == false) {
+                if (this.player_won === false) {
                     this.#updateMatrix(this.player.y, this.player.x + 1, 8);
                 }
                 this.player.x++;
                 this.current_keystroke_sequence.push('right');
-                this.render();
             }
         } else if (keyCode === 38) {
             const is_valid = this.#isValidMove(0, -1);
             if (is_valid) {
                 this.#updateMatrix(this.player.y, this.player.x, 6);
-                if (this.player_won == false) {
+                if (this.player_won === false) {
                     this.#updateMatrix(this.player.y - 1, this.player.x, 8);
                 }
                 this.player.y--;
                 this.current_keystroke_sequence.push('up');
-                this.render();
             }
         } else if (keyCode === 40) {
             const is_valid = this.#isValidMove(0, 1);
             if (is_valid) {
                 this.#updateMatrix(this.player.y, this.player.x, 6);
-                if (this.player_won == false) {
+                if (this.player_won === false) {
                     this.#updateMatrix(this.player.y + 1, this.player.x, 8);
                 }
                 this.player.y++;
                 this.current_keystroke_sequence.push('down');
-                this.render();
             }
         }
-        this.matrix = this.#update_map(this.matrix, this.player.x, this.player.y);
+        this.#update_map();
+        this.render();
     };
 
     #getCenter(w, h) {
@@ -247,179 +240,143 @@ class GridSystem {
         return this.context;
     }
 
-    #update_map(map_, new_pos) {
-        let observations = this.#newObservations(map_, new_pos); //Get observations
-        let new_map = [];
-
+    #update_map() {
+        let observations = this.#newObservations(); //Get observations
         //Update map to reflect observations
-        for (let i = 0; i < map_.length; i++) {
-            new_map.push([]);
-            for (let j = 0; j < map_[i].length; j++) {
-                if (observations.has([i, j])) {
-                    new_map[i].push(6);
-                } else {
-                    new_map[i].push(map_[i][j]);
+        for (let i = 0; i < this.matrix.length; i++) {
+            for (let j = 0; j < this.matrix[i].length; j++) {
+                for (let k = 0; k < observations.length; k++) {
+                    if ((observations[k][0] === i && observations[k][1] === j) && !(observations[k][0] === this.player.y && observations[k][1] === this.player.x)) {
+                        this.matrix[i][j] = 6;
+                    }
                 }
             }
         }
-
     }
 
-    #newObservations(map_, pos) {
-        var observed = this.#raycaster(map_, pos);
-        var newObservations = new Set();
+    #newObservations() {
+        let observed = this.#raycaster(this.matrix, [this.player.y, this.player.x]);
+        var newObservations = []
 
-        for (var r = 0; r < observed.length; r++) {
-            var c = observed[r];
-            if (map_[r][c] !== 0 && map_[r][c] !== 2) {
+        for (var i = 0; i < observed.length; i++) {
+            let r = observed[i][0]
+            let c = observed[i][1]
+            if (this.matrix[r][c] !== 0 && this.matrix[r][c] !== 2) {
                 continue;
             }
-            newObservations.add([r, c]);
+            newObservations.push([r, c]);
         }
-
         return newObservations;
     }
 
-    #raycaster(map_, pos) {
-        // Retrieve the coordinates of the player's position
-        let r = pos[0];
-        let c = pos[1];
+    #index_from_row_col(row, col, ncols) {
+        return row * ncols + col
+    }
 
-        // Retrieve the size of the map
-        let nrows = map_.length;
-        let ncols = map_[0].length;
+    #row_col_from_index(index, ncols) {
+        return [Math.floor(index / ncols), index % ncols]
+    }
 
-        // Create a set to store the tiles currently visible to the player
-        let observed = new Set();
+    #get_index_of(arr, val, start = 0) {
+        for (let i = start; i < arr.length; i++) {
+            if (arr[i] === val) {
+                return i
+            }
+        }
+        return -1
+    }
 
-        // 1st quadrant: +x, +y
-        let nearestRightWall = ncols; // Can't see past the edge of the map
+    #raycaster(matrix, position) {
+        // returns a list of all cells visible from the given position
+        // a cell is visible if each of it's four corners is visible from the corresponding corner of the position
+        // a corner is visible if it is not blocked by a wall
 
-        // Limit to top half of the map: [r, r-1, r-2, ..., 0]
+        const r = position[0]
+        const c = position[1]
+        const observed = new Set()
+        const nrows = matrix.length
+        const ncols = matrix[0].length
+
+        // first quadrant
+        // limit to top half of the maze
+        let nearest_right_wall = ncols
+
         for (let r_ = r; r_ >= 0; r_--) {
-            // Retrieve the current row of the map
-            let row = map_[r_];
-
-            // Wall stops our player from seeing past it
-            let wall = Math.min(
-                nearestRightWall, // Previous wall
-                row.indexOf(3, c)
-            ); // This row's closest wall: 3 is a wall
-
-            // Both walls block: whichever wall is closer (min), will block more.
-
-            // Limit to right half of the map
-            let right = [];
+            const row_ = [...matrix[r_]]
+            const wall = Math.min(nearest_right_wall, this.#get_index_of(row_, 3, c))
+            const right = []
             for (let c_ = c; c_ < wall; c_++) {
-                right.push(c_); // All of the points we can see: between our position and the wall
+                right.push(c_)
             }
-            observed.add(right.map((c_) => [r_, c_])); // Add the visible tiles to the set of observed tiles
-
-            if (right.length == 0) {
-                // If nothing new is seen, then walls are completely blocking our view.
-                break;
+            if (right.length > 0) {
+                right.forEach(item => observed.add(this.#index_from_row_col(r_, item, ncols)))
+            } else {
+                break
             }
-
-            nearestRightWall = right[right.length - 1] + 1; // Closest wall carries over as we move further away: still blocks
+            nearest_right_wall = right[right.length - 1] + 1
         }
 
-        // 2nd quadrant: -x, +y
-        // Getting left half of map by flipping map, and getting next "right" half
-        let nearestLeftWall = ncols;
 
-        // Limit to top half of the map: [r, r-1, r-2, ..., 0]
+        // second quadrant
+        // limit to left half of the maze
+        let nearest_left_wall = ncols
+
         for (let r_ = r; r_ >= 0; r_--) {
-            // Retrieve the current row of the map
-            let row = map_[r_];
-
-            // Wall stops our player from seeing past it
-            let wall = Math.max(
-                nearestLeftWall, // Previous wall
-                row.lastIndexOf(3, c)
-            ); // This row's closest wall: 3 is a wall
-
-            // Both walls block: whichever wall is closer (min), will block more.
-
-            // Limit to left half of the map
-            let left = [];
-            for (let c_ = c; c_ > wall; c_--) {
-                left.push(c_); // All of the points we can see: between our position and the wall
+            const row_ = [...matrix[r_]].reverse()
+            const flipped_c = ncols - c
+            const wall = Math.min(nearest_left_wall, this.#get_index_of(row_, 3, flipped_c - 1))
+            const left = []
+            for (let c_ = flipped_c; c_ < wall; c_++) {
+                left.push(c_)
             }
-            observed.add(left.map((c_) => [r_, c_])); // Add the visible tiles to the set of observed tiles
-
-            if (left.length == 0) {
-                // If nothing new is seen, then walls are completely blocking our view.
-                break;
+            if (left.length > 0) {
+                left.forEach(item => observed.add(this.#index_from_row_col(r_, ncols - item - 1, ncols)))
+            } else {
+                break
             }
-
-            nearestLeftWall = left[left.length - 1] - 1; // Closest wall carries over as we move further away: still blocks
+            nearest_left_wall = left[left.length - 1] + 1
         }
 
-        // 3rd quadrant: -x, -y
-        // Getting left half of map by flipping map, and getting next "right" half
-        let nearestLeftWall2 = ncols;
+        // third quadrant
+        nearest_left_wall = ncols
 
-        // Limit to bottom half of the map: [r, r+1, r+2, ..., nrows-1]
         for (let r_ = r; r_ < nrows; r_++) {
-            // Retrieve the current row of the map
-            let row = map_[r_];
-
-            // Wall stops our player from seeing past it
-            let wall = Math.max(
-                nearestLeftWall2, // Previous wall
-                row.lastIndexOf(3, c)
-            ); // This row's closest wall: 3 is a wall
-
-            // Both walls block: whichever wall is closer (min), will block more.
-
-            // Limit to left half of the map
-            let left = [];
-            for (let c_ = c; c_ > wall; c_--) {
-                left.push(c_); // All of the points we can see: between our position and the wall
+            const row_ = [...matrix[r_]].reverse()
+            const flipped_c = ncols - c
+            const wall = Math.min(nearest_left_wall, this.#get_index_of(row_, 3, flipped_c - 1))
+            const left = []
+            for (let c_ = flipped_c; c_ < wall; c_++) {
+                left.push(c_)
             }
-            observed.add(left.map((c_) => [r_, c_])); // Add the visible tiles to the set of observed tiles
-
-            if (left.length == 0) {
-                // If nothing new is seen, then walls are completely blocking our view.
-                break;
+            if (left.length > 0) {
+                left.forEach(item => observed.add(this.#index_from_row_col(r_, ncols - item - 1, ncols)))
+            } else {
+                break
             }
-
-            nearestLeftWall2 = left[left.length - 1] - 1; // Closest wall carries over as we move further away: still blocks
+            nearest_left_wall = left[left.length - 1] + 1
         }
 
-        // 4th quadrant: +x, -y
-        // Getting right half of map by flipping map, and getting next "left" half
-        let nearestRightWall2 = ncols;
+        // fourth quadrant
+        nearest_right_wall = ncols
 
-        // Limit to bottom half of the map: [r, r+1, r+2, ..., nrows-1]
         for (let r_ = r; r_ < nrows; r_++) {
-            // Retrieve the current row of the map
-            let row = map_[r_];
-
-            // Wall stops our player from seeing past it
-            let wall = Math.min(
-                nearestRightWall2, // Previous wall
-                row.indexOf(3, c)
-            ); // This row's closest wall: 3 is a wall
-
-            // Both walls block: whichever wall is closer (min), will block more.
-
-            // Limit to right half of the map
-            let right = [];
+            const row_ = [...matrix[r_]]
+            const wall = Math.min(nearest_right_wall, this.#get_index_of(row_, 3, c))
+            const right = []
             for (let c_ = c; c_ < wall; c_++) {
-                right.push(c_); // All of the points we can see: between our position and the wall
+                right.push(c_)
             }
-            observed.add(right.map((c_) => [r_, c_])); // Add the visible tiles to the set of observed tiles
-
-            if (right.length == 0) {
-                // If nothing new is seen, then walls are completely blocking our view.
-                break;
+            if (right.length > 0) {
+                right.forEach(item => observed.add(this.#index_from_row_col(r_, item, ncols)))
+            } else {
+                break
             }
-
-            nearestRightWall2 = right[right.length - 1] + 1; // Closest wall carries over as we move further away: still blocks
+            nearest_right_wall = right[right.length - 1] + 1
         }
 
-        return observed;
+        let result = []
+        observed.forEach(item => result.push(this.#row_col_from_index(item, ncols)))
+        return result
     }
 
     render() {
@@ -478,8 +435,8 @@ class GridSystem {
         btn.style.position = 'absolute';
         btn.style.left = center.x;
         btn.style.top = '75%';
-        btn.addEventListener("click", this.resetBoardNewMaze);  
-       // btn.onclick = function() {this.resetBoardNewMaze()};
+        btn.addEventListener("click", this.resetBoardNewMaze);
+        // btn.onclick = function() {this.resetBoardNewMaze()};
 
         // const Button = styled.button`
         // 	background-color: black;
@@ -494,7 +451,7 @@ class GridSystem {
         //<Button onClick={this.resetBoardNewMaze}>Disabled Button</Button>;
 
         // 	this.resetBoardNewMaze();
-        // 	// if (this.player_won == false) {
+        // 	// if (this.player_won === false) {
         // 	// 	this.insertEntry({
         // 	// 		tester_id: this.current_user_id,
         // 	// 		created_at: String(Date.now()),
@@ -510,7 +467,7 @@ class GridSystem {
         this.uiContext.font = '20px Courier';
         this.uiContext.fillStyle = 'white';
 
-        if (this.player_won == true) {
+        if (this.player_won === true) {
             // Upload keystroke data
             this.current_keystroke_sequence.push('won');
 
@@ -532,12 +489,12 @@ class GridSystem {
 
 const gridMatrix1 = [
     [3, 3, 3, 3, 3, 3, 3, 3, 3],
-    [3, 3, 3, 3, 0, 3, 0, 3, 3],
-    [3, 3, 3, 3, 0, 3, 0, 3, 3],
-    [3, 5, 6, 6, 6, 6, 6, 6, 3],
-    [3, 6, 3, 3, 3, 3, 3, 6, 2],
-    [3, 6, 6, 6, 6, 6, 6, 6, 3],
-    [3, 3, 0, 0, 3, 3, 3, 3, 3],
+    [3, 0, 0, 0, 6, 0, 0, 0, 3],
+    [3, 0, 0, 3, 6, 3, 0, 0, 3],
+    [3, 0, 0, 3, 5, 6, 6, 6, 3],
+    [3, 0, 0, 3, 3, 3, 0, 0, 3],
+    [3, 0, 0, 0, 0, 0, 0, 0, 3],
+    [3, 0, 0, 0, 0, 0, 0, 0, 3],
     [3, 3, 3, 3, 3, 3, 3, 3, 3],
 ];
 
@@ -552,6 +509,16 @@ const gridMatrix2 = [
     [3, 3, 3, 3, 3, 3, 3, 3, 3],
 ];
 
+const gridMatrix3 = [
+    [3, 3, 3, 3, 3, 3, 3, 3, 3],
+    [3, 0, 0, 0, 6, 0, 0, 0, 3],
+    [3, 0, 0, 3, 6, 3, 0, 0, 3],
+    [3, 0, 0, 3, 5, 3, 0, 0, 3],
+    [3, 0, 0, 3, 3, 3, 0, 0, 3],
+    [3, 0, 0, 0, 0, 0, 0, 0, 3],
+    [3, 0, 0, 0, 0, 0, 0, 0, 3],
+    [3, 3, 3, 3, 3, 3, 3, 3, 3],
+]
 // const maze_0 = [
 // 	[3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
 // 	[3, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 3, 3, 3]
@@ -732,5 +699,5 @@ const gridMatrix2 = [
 // 	[3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
 // ];
 
-const gridSystem = new GridSystem([gridMatrix1, gridMatrix2]);
+const gridSystem = new GridSystem([gridMatrix1, gridMatrix2, gridMatrix3]);
 gridSystem.render();
