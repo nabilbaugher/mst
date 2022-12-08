@@ -556,7 +556,7 @@ class GridSystem {
         
 
         const para = document.createElement("p");
-        const instruction_string =  
+        //const instruction_string =  git
         para.innerHTML = "Thank you for participating in our survey! You will be presented with 10 different types of mazes. Use the arrow keys → ← ↑ ↓ to move until you find the exit and win! The exit will be in a gray square. (Try to avoid refreshing the page, mazes will reset) </br>";
         para.innerHTML += "Current Trial: " + String(this.current_trial_number);
         //para.textContent = instruction_string;
