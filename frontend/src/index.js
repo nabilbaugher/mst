@@ -39,6 +39,7 @@ class GridSystem {
         this.setUpHelper = this.setUpHelper.bind(this);
         this.submitWorkerID = this.submitWorkerID.bind(this);
         this.showAfterEndScreen = this.showAfterEndScreen.bind(this);
+        this.nextTrialClick = this.nextTrialClick.bind(this);
         // this.showEndScreen = this.showEndScreen.bind(this);
         // this.render = this.render.bind(this);
        // this.render = this.render.bind(this);
@@ -543,6 +544,17 @@ class GridSystem {
         this.showAfterEndScreen();
     }
 
+    nextTrialClick() {
+        if (this.player_won == true) {
+            this.player_won == false;
+            this.resetBoardNewMaze();
+        }
+        else {
+            var you_win_text = document.getElementById("you_win_text");
+            you_win_text.innerHTML = "Error: Please complete this <br/> maze before continuing"
+        }
+    }
+
     render() {
         /*
         Makes the visual representation of the maze
@@ -618,7 +630,7 @@ class GridSystem {
         btn.style.position = 'absolute';
         btn.style.left = center.x;
         btn.style.top = '85%';
-        btn.addEventListener("click", this.resetBoardNewMaze);
+        btn.addEventListener("click", this.nextTrialClick);
 
 
         // You win text
