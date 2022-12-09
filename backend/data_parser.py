@@ -1,6 +1,6 @@
 import csv
 from maze import Maze, maze2tree, grid2maze
-from test_mazes import *
+from test_mazes import mazes
 #Data pulled as csv
 
 """
@@ -31,8 +31,7 @@ directions = {'up':  (-1, 0),
              'left': ( 0,-1),
              'right':( 0, 1)}
 
-#{maze_id: maze }
-mazes = {'1':Maze1}
+
 
 def get_csv(filename):
     """ Turn CSV into a list of dictionaries. """ 
@@ -93,7 +92,7 @@ def parse_keystrokes(maze, keystrokes):
         new_pos = maze.move(pos, shift)
         
         if new_pos==pos: #Nothing changed
-            #print("blocked!")
+            print("blocked!")
             continue
         
         path.append(new_pos) #Otherwise, add to path
@@ -210,9 +209,9 @@ if __name__ == "__main__":
     
     u,d,l,r = 'up', 'down', 'left', 'right'
     
-    keystrokes_test = [u,u,l,l,d]
-    tree = maze2tree(Maze2)
+    # keystrokes_test = [u,u,l,l,d]
+    # tree = maze2tree(Maze2)
     
-    result = parse_keystrokes(Maze2, keystrokes_test) #Go right to exit
+    # result = parse_keystrokes(Maze2, keystrokes_test) #Go right to exit
     
     decisions = convert_data(file)

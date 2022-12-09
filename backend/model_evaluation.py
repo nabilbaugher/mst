@@ -11,7 +11,7 @@ from maze import Maze, maze2tree, grid2maze
 from decisionmodel import DecisionModel, DecisionModelRange, raw_nodevalue_comb, softmax
 #Converting data into our desired formats.
 #import parser
-from data_parser import get_csv, convert_data
+from data_parser import get_csv, convert_data,  directions, mazes
 
 pp = pprint.PrettyPrinter(compact=False, width=90)
 
@@ -167,7 +167,9 @@ def decisions_to_subject_decisions(decisions):
             
             #Each decision is an event: choosing one node, on one map
             
-            subject_decisions.extend( [(maze, node) for node in nodes] )  #All of the decisions for one map
+            new_decisions = [(maze, node) for node in nodes]
+            
+            subject_decisions[subject].extend( new_decisions )  #All of the decisions for one map
             
     return subject_decisions
 
@@ -321,4 +323,13 @@ eu_model_class = DecisionModelRange(model_name= 'Expected_Utility',
 
 
 if __name__ == "__main__":
-    pass
+    file = get_csv('trials_rows')
+
+    
+    decisions = convert_data(file)
+    
+    subject_decisions = decisions_to_subject_decisions(decisions)
+    
+    #Question for Zoe: each subject seems to show up multiple times. 
+    #Is that when they switch from one map to the next?
+    

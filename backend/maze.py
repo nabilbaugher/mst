@@ -131,6 +131,16 @@ class Maze:
     def __len__(self):
         return len(self.map)
 
+    def get_hidden(self):
+        """Gets all hidden squares there are, as a list."""
+        
+        hidden = self.black.copy() #Black squares
+        
+        if self.exit!=None: #Exit square exists
+            hidden.append(self.exit)
+        
+        return tuple(hidden) #Makes it hashable
+            
 
     def map_builder(self):
         """
@@ -211,6 +221,14 @@ class Maze:
         
         ##Break problem down by quadrant
         
+        def find_wall(row, lower):
+            """ Find the nearest wall to the right. """
+            if 3 not in row[lower:]:
+                return float('inf') #No wall!
+            
+            return row.index(3,lower) #If there's a wall, find the closest one.
+            
+        
         # 1st quadrant: +x, +y
         
         nearest_right_wall = self.ncols #Can't see past map
@@ -222,7 +240,8 @@ class Maze:
             
             #Wall stops our player from seeing past it
             wall = min(nearest_right_wall, #Previous wall
-                       row_.index(3, c)) #This row's closest wall: 3 is a wall
+                       find_wall(row_,c)) #This row's closest wall: 3 is a wall
+            #c: Starting at the point (r,c), moving to the right
             
             #Both walls block: whichever wall is closer (min), will block more.
             
@@ -248,7 +267,7 @@ class Maze:
             
             #Find closest wall to block
             wall = min(nearest_left_wall, 
-                       row_.index(3, flipped_c-1)) 
+                       find_wall(row_,flipped_c-1)) 
             
             #Why flipped_c-1? Because flipped_c column is already handled by quadrant 1
             
@@ -272,7 +291,7 @@ class Maze:
             flipped_c = self.ncols - c
             
             wall = min(nearest_left_wall, 
-                       row_.index(3, flipped_c -1))
+                       find_wall(row_,flipped_c-1))
     
             left = [c_ for c_ in range(flipped_c, wall)]
             
@@ -292,7 +311,7 @@ class Maze:
             row_ = self.map[r_] 
             
             wall = min(nearest_right_wall, 
-                       row_.index(3, c))
+                       find_wall(row_,c))
             
             right = [c_ for c_ in range(c, wall)]
             observed.update([(r_, c_) for c_ in right])
@@ -304,8 +323,7 @@ class Maze:
     
         #Result of all four quadrants
         return observed
-    
-        
+          
     def new_observations(self, pos):
         """
         After taking a step, find which tiles are newly revealed to the player,
@@ -351,10 +369,13 @@ class Maze:
         #Within bounds
         r_valid = (r>=0) and (r<=self.nrows-1)
         c_valid = (c>=0) and (c<=self.ncols-1)
-        #Not within a wall
+        
+        if not r_valid or not c_valid: return False #Both conditions must be met to be in bounds
+        
+        #If it's in bounds, we have to check if it's within a wall
         not_in_wall = (self.map[r][c]!=3)
         
-        return r_valid and c_valid and not_in_wall #All three must be met
+        return not_in_wall #All three must be met
     
     def move(self, pos, shift):
         """
@@ -419,9 +440,15 @@ class Maze:
         new_path = self.path.copy()
         
         new_path+= list(nobservations)
-        new_path+= old_pos #Include old position
+        
+        new_black = [black for black in self.black if black not in nobservations] #Remove old black
+        
+        if self.exit in nobservations:
+            new_exit=None
+        else:
+            new_exit=self.exit
 
-        new_maze = Maze(self.nrows, self.ncols, self.black, new_path, self.start, self.exit)
+        new_maze = Maze(self.nrows, self.ncols, new_black, new_path, self.start, new_exit)
         
 
         return new_maze
@@ -611,7 +638,6 @@ def memoize(function):
     return wrapper
 
 #Use memoize to cache results of map2tree, save for re-use
-
 @memoize
 def maze2tree(maze):
     """
@@ -665,7 +691,9 @@ def maze2tree(maze):
                 'steps_from_root': 0,   #Steps from root node
                 
                 'children': set(),      #Child nodes: not set yet
-                'pid': None}}           #Parent ID: the root node has no parent
+                'pid': None,            #Parent ID: the root node has no parent
+                'depth':0}            
+            }           
     
     #BFS in progress
     # agenda = [(0, map_)] #(node, current map)
@@ -693,25 +721,147 @@ def maze2tree(maze):
                       
                       'children': set(),
                       'pid': node, #Parent node id
+                      'depth': tree[node]['depth'] + 1, #Depth of our tree
                       'map': new_map.map} #New modified map
 
             new_node = max(tree ) +1 #Enumerate: max gives us most recent (highest index) node
             
             #Add our new node to the agenda: expand this path further
             
-            agenda.append((new_node, new_map.update_map(path[0], path[-1])))
+            agenda.append((new_node, new_map.update_map(path[-2], path[-1])))
+            
             
             #Make the parent-child relation
             tree[node]['children'].add(new_node)
             #Add child to tree
             tree[new_node] = branch
             
-        if len(agenda)>100:
-            print(new_map, path[-1])
-            
+        # print(branch['depth'])
+
     #print('t', tree)
     return tree
 
+def gen_branch(maze, pos):
+    """
+    Create a new branch in our tree.
+
+    Parameters
+    ----------
+    maze : TYPE
+        DESCRIPTION.
+    parent_node : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    """
+    branch ={'pos': pos,          #Player position: starting position
+             'revealed': maze.new_observations(pos),   #Set of black tiles that have been revealed just now
+                
+             'children': {},             #Dictionary of the form -
+                                             #{child: path_to_child}
+             'depth':0,
+             'map':maze}     
+
+    return branch       
+
+
+@memoize
+def maze2statetree(maze):
+    """
+    Converts our maze into a tree, representing the ways we can navigate through the maze.
+    
+    However, this version is optimized over maze2tree: in that function, every possible path gets its own 
+    branch, and thus branches increase very quickly. Each of these paths could be seen as a "state".
+    
+    In this new tree, however, a "state" has been redefined: a state is uniquely defined by which black
+    squares have been revealed. 
+    
+    Thus, two mazes with the same hidden squares, but different paths to that point, are now the "same".
+    
+    This should significantly improve the time and space cost to represent the choices available to our
+    player, in a way that preserves necessary information.
+    
+    Parameters
+    ----------
+    maze : Maze object, our maze to navigate. Stores a maze.map object:
+        
+        map: tuple of tuples of ints - represents a grid in the shape (maze.nrows, maze.ncols)
+               -tuple of tuples    has length = nrows, 
+               -each tuple of ints has length = ncols.
+               
+               Our "maze" the player is moving through.
+           
+    Returns
+    -------
+    tree: Dictionary of dictionaries - 
+          -Outer dictionary - keys are int, representing the index of that node (a specific partial path)
+                              vals are the node data as a dictionary
+                              
+          -Inner dictionary - keys are str representing node, vals give information about that particular node
+          
+        Stores all of the possible ways to move through the entire maze. Each node in our tree represents 
+        a partial path.
+    """
+    if type(maze) in (tuple, list): #If we have a grid, convert it.
+        maze = grid2maze(maze)    
+
+    ##Create tree to edit
+
+    #First, our root node   
+    root_branch = gen_branch(maze=maze, pos=maze.start)
+    root_node = maze.get_hidden()  #A state is uniquely identified by which tiles are hidden.
+    
+    tree = {root_node: root_branch}
+        
+    #BFS in progress
+    agenda = deque([ (root_node, maze) ]) #(node, current map)
+    
+    while agenda: # in each loop, find and append children
+
+        parent_node, parent_maze = agenda.popleft() #Grab first element
+        pos = tree[parent_node]['pos'] #Current position
+        
+        #Try each new move
+        for path, revealed in parent_maze.possible_paths(pos): 
+            #print(path)
+            
+            #Get all info about new condition
+            new_pos = path[-1]
+            #print(pos, new_pos)
+            child_maze = parent_maze.update_map(pos, new_pos) #Create new maze 
+            child_node = child_maze.get_hidden() #Label for new maze
+            
+            if not child_node in tree: #New node!
+                branch = gen_branch(maze=child_maze, pos=new_pos) #Create new node
+                
+                
+                tree[child_node] = branch #Add this node to the tree
+                
+                agenda.append((child_node, child_maze)) #New nodes need to be explored further!
+                
+                # parent_maze.visualize()
+                # child_maze.visualize()
+                
+
+            #Update parent's children
+            children = tree[parent_node]['children'] #Hoping this aliases correctly
+            
+            if not child_node in children: #New child!
+                children[child_node] = path #Save our path between parent and child.
+            
+            else: #Not new child: is this a better path?
+                
+                old_path = children[child_node]
+                
+                if len(path) < len(old_path): #If this path is better, take it
+                    
+                    children[child_node] = path #Update to new path!
+
+
+    return tree
 ####################################
 #Functions used when we don't want to deal with mazes, just grids
 

@@ -156,6 +156,40 @@ def weight(p, beta):
 ###Rather than creating multiple different models, 
 ###the combined value model is used to generalize all three: EU, DU, PWU
 
+def compute_value_iteration(maze):
+    pass
+
+def loss_steps_taken_blind(maze, node):
+    """
+    Computes the loss associated with reaching the current node: does not compute the expected loss over 
+    future events.
+    
+    This loss is the number of steps taken,
+
+    Parameters
+    ----------
+    maze : Maze object, our maze to navigate. Stores a maze.map object:
+        
+        map: tuple of tuples of ints - represents a grid in the shape (maze.nrows, maze.ncols)
+               -tuple of tuples    has length = nrows, 
+               -each tuple of ints has length = ncols.
+               
+               Our "maze" the player is moving through.
+           
+    node : int
+        Node id - identifies which node you're identifying the value of.
+        
+        A node represents a partially explored map. 
+        node is simply the number id for one of these partial paths.
+            -Note: If the id is too high, there may be no corresponding node.
+
+    Returns
+    -------
+    None.
+
+    """
+    
+
 def raw_nodevalue_comb(maze, node, gamma=1, beta=1):
     """
     Get value of this node (this path through our maze), 
