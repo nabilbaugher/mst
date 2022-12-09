@@ -408,7 +408,7 @@ class Maze:
         return new_pos #Otherwise, move!
         
     
-    def update_map(self, old_pos, new_pos):
+    def update_map(self, pos):
         """
         
 
@@ -420,8 +420,7 @@ class Maze:
                
                Our "maze" the player is moving through.
                
-        old_pos : tuple (int,int) - previous position on map.
-        new_pos : tuple (int,int) - current position on map.
+        pos : tuple (int,int) - new position on map.
 
 
         Returns
@@ -435,7 +434,7 @@ class Maze:
 
         """
 
-        nobservations = self.new_observations(new_pos) #Get observations
+        nobservations = self.new_observations(pos) #Get observations
         
         new_path = self.path.copy()
         
@@ -522,7 +521,7 @@ class Maze:
                     
         return paths
     
-    def visualize(self, node=None):
+    def visualize(self, pos=None, node=None):
         """
         Turns a map representation into a human-interpretable image.
 
@@ -561,42 +560,46 @@ class Maze:
         
         curr_map = self
         
-        if node: #If given a node, we've chosen a partial path.
-                  #Draw that path!
+        
+        
+        ###This functionality is defunct, unless we adjust for it to work with maze2statetree instead
+        
+        # if node: #If given a node, we've chosen a partial path.
+        #           #Draw that path!
             
-            tree = maze2tree(self) #Get tree to get nodes
+        #     tree = maze2tree(self) #Get tree to get nodes
             
-            #Make sure that this node is valid!
-            try:
-                path = tree[node]['path_from_root']
-            except:
-                raise ValueError(f"The node value {node} is not in range: this node does not exist!")
+        #     #Make sure that this node is valid!
+        #     try:
+        #         path = tree[node]['path_from_root']
+        #     except:
+        #         raise ValueError(f"The node value {node} is not in range: this node does not exist!")
 
-            #Get the map matching this node
-            curr_map = tree[node]['map']
-            curr_pos = tree[node]['pos']
-            prev_pos = path[-1]
+        #     #Get the map matching this node
+        #     curr_map = tree[node]['map']
+        #     curr_pos = tree[node]['pos']
+        #     prev_pos = path[-1]
             
-            #Update map based on our last step
-            curr_map = curr_map.update_map(curr_pos, prev_pos)
+        #     #Update map based on our last step
+        #     curr_map = curr_map.update_map(curr_pos, prev_pos)
             
-            #row --> y axis, col --> x axis
-            #Thus, to do (x,y), we need tuples of the form (c,r)
-            path = [(c ,r) for r ,c in path][::-1]
-            #Also reversing order of path
+        #     #row --> y axis, col --> x axis
+        #     #Thus, to do (x,y), we need tuples of the form (c,r)
+        #     path = [(c ,r) for r ,c in path][::-1]
+        #     #Also reversing order of path
             
-            #Convert pairs of elements (x,y) into two lists: X and Y
-            X, Y = zip(*[ (x + 0.5, self.nrows - y - 0.5)   for x ,y in path])
-            #Offset (+0.5, -0.5) is so that our dots are centered on each tile
+        #     #Convert pairs of elements (x,y) into two lists: X and Y
+        #     X, Y = zip(*[ (x + 0.5, self.nrows - y - 0.5)   for x ,y in path])
+        #     #Offset (+0.5, -0.5) is so that our dots are centered on each tile
             
             
-            ###Plotting our path
+        #     ###Plotting our path
             
-            #Draw dotted line between each tile on path
-            ax.plot(X, Y, 'o--',  markersize=4, label=node)
+        #     #Draw dotted line between each tile on path
+        #     ax.plot(X, Y, 'o--',  markersize=4, label=node)
             
-            #Color our starting point (X[-1],Y[-1]) as purple
-            ax.plot(X[-1], Y[-1], 's', markersize=8, color='purple')
+        #     #Color our starting point (X[-1],Y[-1]) as purple
+        #     ax.plot(X[-1], Y[-1], 's', markersize=8, color='purple')
 
         
         #Convert string numbers into int numbers
@@ -625,6 +628,12 @@ class Maze:
         ax.set_xticklabels([str(i) for i in range(self.ncols)])
         ax.set_yticklabels([str(i) for i in range(self.nrows)])
 
+
+        if pos:
+            (r,c)=pos
+            
+            ax.plot(c+.5, self.nrows-r-.5, 'bo', markersize=10)
+            
         plt.show()
 
 ###Used so we don't have to re-calculate the same tree multiple times
@@ -749,27 +758,25 @@ def gen_branch(maze, pos):
     ----------
     maze : TYPE
         DESCRIPTION.
-    parent_node : TYPE
+    pos : TYPE
         DESCRIPTION.
 
     Returns
     -------
-    None.
+    Our new branch.
 
     """
     branch ={'pos': pos,          #Player position: starting position
              'revealed': maze.new_observations(pos),   #Set of black tiles that have been revealed just now
-                
              'children': {},             #Dictionary of the form -
-                                             #{child: path_to_child}
-             'depth':0,
-             'map':maze}     
+             'map':maze}                 #{child: path_to_child}
+                  
 
     return branch       
 
 
 @memoize
-def maze2statetree(maze):
+def maze2statetree(maze, no_maze_objects=False):
     """
     Converts our maze into a tree, representing the ways we can navigate through the maze.
     
@@ -831,7 +838,7 @@ def maze2statetree(maze):
             #Get all info about new condition
             new_pos = path[-1]
             #print(pos, new_pos)
-            child_maze = parent_maze.update_map(pos, new_pos) #Create new maze 
+            child_maze = parent_maze.update_map(new_pos) #Create new maze 
             child_node = child_maze.get_hidden() #Label for new maze
             
             if not child_node in tree: #New node!
@@ -859,8 +866,7 @@ def maze2statetree(maze):
                 if len(path) < len(old_path): #If this path is better, take it
                     
                     children[child_node] = path #Update to new path!
-
-
+        
     return tree
 ####################################
 #Functions used when we don't want to deal with mazes, just grids

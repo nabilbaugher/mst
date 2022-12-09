@@ -13,6 +13,7 @@ import itertools
 
 from maze import Maze, maze2tree, grid2maze
 from decisionmodel import DecisionModel
+from test_mazes import mazes, trees
 
 pp = pprint.PrettyPrinter(compact=False)
 
@@ -60,6 +61,7 @@ Reminder of the params typical format
 
 
 def best_path(maze, model):
+    ####NEEDS TO BE FIXED TO MATCH maze2statetree
     """
     Finds the best path, based on our nodevalue function and parameters.
 
@@ -150,6 +152,7 @@ def best_path(maze, model):
 #lines=maze
 
 def visualize_maze(maze, ax=None):
+    
     """
     Turns a map representation into a human-interpretable image. 
     Modifies the input ax object, which is what we draw the map onto.
@@ -208,6 +211,7 @@ def visualize_maze(maze, ax=None):
 
 
 def visualize_path(maze, path, ax):
+    ####NEEDS TO BE FIXED TO MATCH maze2statetree
     """
     Takes a visual map, and draws a path on that map from start to end. 
     The visual, represented as ax, is modified in-place: it doesn't have to be returned.
@@ -259,7 +263,6 @@ def visualize_path(maze, path, ax):
     ax.legend(loc='upper left', bbox_to_anchor=(0,-0.1)) #Add legend
     
 
-###(gamma, beta, tau) --> ( (gamma, beta), (tau,) )
 
 
 #Models example
@@ -344,6 +347,6 @@ if __name__ == "__main__":
     world = '4ways'
     
     
-    visualize_juxtaposed_best_paths(grid2maze(Maze2))
+    visualize_juxtaposed_best_paths(grid2maze(mazes['2']))
 
     #visualize_juxtaposed_best_paths(generate_spiral_maps(1)[0])

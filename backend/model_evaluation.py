@@ -55,6 +55,7 @@ Reminder of the params typical format
 
 
 def avg_log_likelihood_decisions(decisions_list,  model ):
+    ###NEEDS REWRITING
     """
     Helps compute how likely these of decisions would have been, assuming our decisions were guided
     by our model and params (higher value -> higher likelihood of decision)

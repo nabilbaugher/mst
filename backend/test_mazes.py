@@ -1,10 +1,12 @@
 from maze import Maze, grid2maze, maze2statetree
+import pickle
 
 """
 This file contains several of our mazes we can test our code with, making sure it runs correctly.
 """
 
-mazes = {}
+# mazes = {}
+# trees = {}
 
 class maps():
 
@@ -678,19 +680,43 @@ class maps():
         [3, 3, 3, 3, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3],
     ]
 
+###For storing, retrieving our data
+def storeData(db, filename):
+    with open(filename, 'ab') as dbfile :
+        pickle.dump(db, dbfile)
+  
+def loadData(filename):
+    # for reading also binary mode is important
+    with open(filename, 'rb') as dbfile :
+        db = pickle.load(dbfile)   
+    return db
 
+mazes = loadData("mazes")
+trees = loadData("trees")
+
+
+
+# if __name__ == "__main__":
         
-for i in range(30):
+#     for i in range(30): 
+        
+#         mazes[str(i)] = grid2maze(maps.__dict__["maze_"+str(i)]) #Save data
+        
+#         trees[str(i)] = maze2statetree(mazes[str(i)]) #Save more data
+        
+#         print('done!',i)
+        
+#     storeData(mazes,"mazes")
+#     storeData(trees,"trees")
+
+# for i in range(1,10):
+#     mazes['map_'+str(i)] = grid2maze( maps.__dict__["map_"+str(i)] )
     
-    mazes[str(i)] = grid2maze( maps.__dict__["maze_"+str(i)] )
+# Maze2=mazes['2']
     
-    maze2statetree(mazes[str(i)])
+# tree = maze2statetree(Maze2)
+
+# for key in tree:
+#     curr_maze = tree[key]['map']
     
-    print('uwu',i)
-    
-    
-for i in range(1,10):
-    mazes['map_'+str(i)] = grid2maze( maps.__dict__["map_"+str(i)] )
-    
-Maze2=mazes['2']
-    
+#     curr_maze.visualize()

@@ -1,6 +1,6 @@
 import csv
-from maze import Maze, maze2tree, grid2maze
-from test_mazes import mazes
+from maze import Maze, maze2statetree, grid2maze
+from test_mazes import mazes, trees
 #Data pulled as csv
 
 """
@@ -44,7 +44,8 @@ def get_csv(filename):
             
     return out
 
-def parse_keystrokes(maze, keystrokes):
+
+def parse_keystrokes(maze, tree, keystrokes):
     """
     Convert keystrokes into our path through the maze, and the nodes we move through. 
 
@@ -72,44 +73,45 @@ def parse_keystrokes(maze, keystrokes):
     """
     
     
-    tree = maze2tree(maze) #Get node
-    
     path=   [maze.start]
-    nodes = [0]
+    nodes = [max(tree, key = lambda hidden: len(hidden) )]  #First node => most hidden squares!
+    
+    node_changes = []
     
     for stroke in keystrokes: #Each action the user takes
         
         if stroke=='won': #We're done
             break
     
-        #Last position
-        pos =  path[-1]
-        node = nodes[-1]
+        #Previous position
+        curr_pos =  path[-1]
+        curr_node = nodes[-1]
         
+        curr_maze = tree[curr_node]['map']
         
-        #How did our player moved, based on this keystroke?
+        #How did our player move, based on this keystroke?
         shift = directions[stroke] 
-        new_pos = maze.move(pos, shift)
+        new_pos = maze.move(curr_pos, shift)
         
-        if new_pos==pos: #Nothing changed
-            print("blocked!")
+        if new_pos==curr_pos: #Nothing changed
+            # print("blocked!")
             continue
-        
         path.append(new_pos) #Otherwise, add to path
         
+        new_maze = curr_maze.update_map(new_pos)
         
-        #Check if we have moved into a new node
-        children = tree[node]['children'] #Possible future nodes
+        #Check if we've revealed anything
+        new_hidden = new_maze.get_hidden()
         
-        for child in children: 
-            node_pos = tree[child]['pos']
+        if curr_maze.get_hidden() != new_hidden:
             
-            if node_pos == new_pos: #We have a match!
-                nodes.append(child)
+            nodes.append(new_hidden) #We've move into a new node!
+            node_changes.append(new_pos)
+
     
     
     #Finished moving through maze
-    return {'nodes': nodes, 'path': path}
+    return {'nodes': nodes, 'path': path, 'node_changes': node_changes}
 
 
 def convert_subject(datapoint):
@@ -149,8 +151,9 @@ def convert_subject(datapoint):
     for maze_name, keystrokes in mazes_and_keystrokes.items():
         
         maze = mazes[maze_name] #Get actual maze
+        tree = trees[maze_name] #Get matching tree
         
-        info = parse_keystrokes(maze, keystrokes)
+        info = parse_keystrokes(maze, tree, keystrokes)
         
         output[maze_name] = info #Save the data 
         
@@ -182,7 +185,7 @@ def convert_data(data):
             
         middle dictionary: Dictionary of mazes
             
-        inner dictionary: Dictionary containing how our player moved: either nodes, or paths
+        inner dictionary: Dictionary containing how our player moved: either nodes, paths, or node_changes
         
             Stores the decisions made by every single subject we've tested.
 
@@ -193,14 +196,15 @@ def convert_data(data):
     for datapoint in data:
         subject = datapoint["tester_id"]
         
-        subject_decisions = convert_subject(datapoint) #Convert the data for a single subject.
+        new_subject_decisions = convert_subject(datapoint) #Convert the data for a single subject.
         
-        decisions[subject] = subject_decisions
+        decisions.setdefault(subject, {}).update(new_subject_decisions)
         
     return decisions
 
         
-
+def visualize_player_path(subject, maze):
+    """ Show how the player moves through the map."""
 
 
 
@@ -215,3 +219,16 @@ if __name__ == "__main__":
     # result = parse_keystrokes(Maze2, keystrokes_test) #Go right to exit
     
     decisions = convert_data(file)
+    
+    m = decisions['02a063a0-768f-11ed-9574-33a31f13e24c']['1']
+    
+    maze = mazes['1']
+    
+    
+    for s in m['path']:
+        maze = maze.update_map(pos=s)
+        print(s)
+        if s in m['node_changes']:
+            print("Bazinga uwu") #New node!
+        
+        maze.visualize(s)

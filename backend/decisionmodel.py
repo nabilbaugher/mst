@@ -191,6 +191,7 @@ def loss_steps_taken_blind(maze, node):
     
 
 def raw_nodevalue_comb(maze, node, gamma=1, beta=1):
+    ###NEEDS REWRITING
     """
     Get value of this node (this path through our maze), 
     according to our parameters, before applying softmax and thus tau.
@@ -402,6 +403,7 @@ class DecisionModel:
             
     
     def node_values(self, maze, parent=None):
+        ###NEEDS REWRITING
         """
         Returns the value of every possible path (node) for the entire map.
         
