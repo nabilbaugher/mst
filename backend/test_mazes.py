@@ -695,6 +695,10 @@ mazes = loadData("mazes")
 trees = loadData("trees")
 
 
+"""This allows us to go between mazes and trees, without running our expensive program repeatedly."""
+maze2tree_dict = {mazes[maze]: trees[maze] for maze in mazes}
+
+
 
 # if __name__ == "__main__":
         
@@ -712,7 +716,7 @@ trees = loadData("trees")
 # for i in range(1,10):
 #     mazes['map_'+str(i)] = grid2maze( maps.__dict__["map_"+str(i)] )
     
-# Maze2=mazes['2']
+Maze2=mazes['2']
     
 # tree = maze2statetree(Maze2)
 

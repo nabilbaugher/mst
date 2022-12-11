@@ -108,11 +108,16 @@ Reminder of the params typical format
 
 class Maze:
     
-    def __init__(self, nrows, ncols, black, path, start, exit_=None):
+    def __init__(self, nrows, ncols, black, path, start, pos=None, exit_=None):
         
         self.nrows, self.ncols = nrows, ncols
         self.black, self.path, self.start, self.exit = black, path, start, exit_
         
+        self.pos=pos
+        
+        if self.pos==None: #Position stored internal to the maze
+            self.pos=start
+            
         self.map_builder() #Build map representation
         
     def __str__(self):
@@ -130,18 +135,31 @@ class Maze:
     
     def __len__(self):
         return len(self.map)
+    
+    def __eq__(self, other):
+        
+        if ( type(self) != type(other) ):
+            return False
+        
+        return self.map == other.map
+    
+    def __hash__(self):
+        return hash(self.map)
 
     def get_hidden(self):
         """Gets all hidden squares there are, as a list."""
         
-        hidden = self.black.copy() #Black squares
-        
-        if self.exit!=None: #Exit square exists
-            hidden.append(self.exit)
-        
-        return tuple(hidden) #Makes it hashable
+        if 'hidden' not in self.__dict__: #Generate our hiddens if we haven't done so before
             
-
+            hidden = self.black.copy() #Black squares
+            
+            if self.exit!=None: #Exit square exists
+                hidden.append(self.exit)
+            
+            self.hidden = tuple(hidden) #Makes it hashable
+        
+        return self.hidden
+            
     def map_builder(self):
         """
         This function turns a description of a map into its representation: a tuple of tuples, representing a grid.
@@ -190,10 +208,9 @@ class Maze:
         
         self.map = map_ #Save map representation
         
-
     def raycaster(self, pos):
         """
-        Based on our map and our current position, this function tells us which map tiles our player can see.
+        Based on our map and a new position, this function tells us which map tiles our player can see.
         
         Parameters
         ----------
@@ -378,13 +395,13 @@ class Maze:
         return not_in_wall #All three must be met
     
     def move(self, pos, shift):
+        
+        
         """
         Try to move on the map.
         
         Parameters
         ----------
-        pos : tuple (int,int) 
-            Previous position on map.
         shift : tuple (int,int) 
             How we move from our old position.
             
@@ -394,7 +411,7 @@ class Maze:
         
         Raise error if old_pos is invalid.
         """
-        r,c   = pos
+        r,c   =   pos
         rr,cc   = shift #Move positions
         
         new_pos = ( r+rr, c+cc )
@@ -447,13 +464,13 @@ class Maze:
         else:
             new_exit=self.exit
 
-        new_maze = Maze(self.nrows, self.ncols, new_black, new_path, self.start, new_exit)
+        new_maze = Maze(self.nrows, self.ncols, new_black, new_path, self.start, 
+                        pos=pos, exit_=new_exit)
         
 
         return new_maze
-    
-    
-    def possible_paths(self, pos):
+       
+    def possible_paths(self):
         """
         Uses breadth-first search to find every possible movement to a black tile from our current position.
         
@@ -492,7 +509,7 @@ class Maze:
         
         #BFS is implemented by the agenda. 
         # agenda = [ [pos] ]
-        agenda = deque([[pos]])
+        agenda = deque([[self.pos]])
         paths = []
     
         while agenda: #Still agendas left - incomplete paths.
@@ -750,28 +767,13 @@ def maze2tree(maze):
     #print('t', tree)
     return tree
 
-def gen_branch(maze, pos):
+def gen_branch(maze):
     """
     Create a new branch in our tree.
-
-    Parameters
-    ----------
-    maze : TYPE
-        DESCRIPTION.
-    pos : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    Our new branch.
-
     """
-    branch ={'pos': pos,          #Player position: starting position
-             'revealed': maze.new_observations(pos),   #Set of black tiles that have been revealed just now
-             'children': {},             #Dictionary of the form -
-             'map':maze}                 #{child: path_to_child}
-                  
-
+    branch = {'map':maze,             #Dictionary of the form -
+              'children': {}}         #{child: {'path': path from parent to child,
+                                               #'maze': child maze}}       
     return branch       
 
 
@@ -818,7 +820,7 @@ def maze2statetree(maze, no_maze_objects=False):
     ##Create tree to edit
 
     #First, our root node   
-    root_branch = gen_branch(maze=maze, pos=maze.start)
+    root_branch = gen_branch(maze)
     root_node = maze.get_hidden()  #A state is uniquely identified by which tiles are hidden.
     
     tree = {root_node: root_branch}
@@ -829,11 +831,9 @@ def maze2statetree(maze, no_maze_objects=False):
     while agenda: # in each loop, find and append children
 
         parent_node, parent_maze = agenda.popleft() #Grab first element
-        pos = tree[parent_node]['pos'] #Current position
         
         #Try each new move
-        for path, revealed in parent_maze.possible_paths(pos): 
-            #print(path)
+        for path, revealed in parent_maze.possible_paths(): 
             
             #Get all info about new condition
             new_pos = path[-1]
@@ -842,7 +842,7 @@ def maze2statetree(maze, no_maze_objects=False):
             child_node = child_maze.get_hidden() #Label for new maze
             
             if not child_node in tree: #New node!
-                branch = gen_branch(maze=child_maze, pos=new_pos) #Create new node
+                branch = gen_branch(maze=child_maze) #Create new node
                 
                 
                 tree[child_node] = branch #Add this node to the tree
@@ -857,7 +857,7 @@ def maze2statetree(maze, no_maze_objects=False):
             children = tree[parent_node]['children'] #Hoping this aliases correctly
             
             if not child_node in children: #New child!
-                children[child_node] = path #Save our path between parent and child.
+                children[child_node] = {'path':path, 'maze':child_maze}
             
             else: #Not new child: is this a better path?
                 
@@ -865,7 +865,7 @@ def maze2statetree(maze, no_maze_objects=False):
                 
                 if len(path) < len(old_path): #If this path is better, take it
                     
-                    children[child_node] = path #Update to new path!
+                    children[child_node]['path'] = path #Update to new path!
         
     return tree
 ####################################
@@ -936,8 +936,6 @@ def map_visualizer(map_, node=None):
     """
     maze = grid2maze(map_)
     maze.visualize(node)
-    
-
 
 def grid2maze(map_):
     nrows, ncols = len(map_), len(map_[0])

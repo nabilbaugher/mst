@@ -8,6 +8,9 @@ from collections import deque
 
 from maze import Maze, maze2tree, grid2maze
 
+from test_mazes import mazes, trees, maze2tree_dict
+from data_parser import decisions_to_subject_decisions
+
 """
 The goal of this file is to create the DecisionModel and DecisionModelRange classes. Why do we need this classes?
 
@@ -159,38 +162,38 @@ def weight(p, beta):
 def compute_value_iteration(maze):
     pass
 
-def loss_steps_taken_blind(maze, node):
-    """
-    Computes the loss associated with reaching the current node: does not compute the expected loss over 
-    future events.
+# def loss_steps_taken_blind(maze, node):
+#     """
+#     Computes the loss associated with reaching the current node: does not compute the expected loss over 
+#     future events.
     
-    This loss is the number of steps taken,
+#     This loss is the number of steps taken,
 
-    Parameters
-    ----------
-    maze : Maze object, our maze to navigate. Stores a maze.map object:
+#     Parameters
+#     ----------
+#     maze : Maze object, our maze to navigate. Stores a maze.map object:
         
-        map: tuple of tuples of ints - represents a grid in the shape (maze.nrows, maze.ncols)
-               -tuple of tuples    has length = nrows, 
-               -each tuple of ints has length = ncols.
+#         map: tuple of tuples of ints - represents a grid in the shape (maze.nrows, maze.ncols)
+#                -tuple of tuples    has length = nrows, 
+#                -each tuple of ints has length = ncols.
                
-               Our "maze" the player is moving through.
+#                Our "maze" the player is moving through.
            
-    node : int
-        Node id - identifies which node you're identifying the value of.
+#     node : int
+#         Node id - identifies which node you're identifying the value of.
         
-        A node represents a partially explored map. 
-        node is simply the number id for one of these partial paths.
-            -Note: If the id is too high, there may be no corresponding node.
+#         A node represents a partially explored map. 
+#         node is simply the number id for one of these partial paths.
+#             -Note: If the id is too high, there may be no corresponding node.
 
-    Returns
-    -------
-    None.
+#     Returns
+#     -------
+#     None.
 
-    """
+#     """
     
 
-def raw_nodevalue_comb(maze, node, gamma=1, beta=1):
+def raw_nodevalue_comb(maze, gamma=1, beta=1):
     ###NEEDS REWRITING
     """
     Get value of this node (this path through our maze), 
@@ -205,13 +208,6 @@ def raw_nodevalue_comb(maze, node, gamma=1, beta=1):
                -each tuple of ints has length = ncols.
                
                Our "maze" the player is moving through.
-           
-    node : int
-        Node id - identifies which node you're identifying the value of.
-        
-        A node represents a partially explored map. 
-        node is simply the number id for one of these partial paths.
-            -Note: If the id is too high, there may be no corresponding node.
         
     gamma : float in real number range [0,1],  optional
         The "discount factor". Reflects the idea that we care less about rewards in the future.
@@ -238,23 +234,13 @@ def raw_nodevalue_comb(maze, node, gamma=1, beta=1):
 
     """
 
-    tree = maze2tree(maze)
-    revealed = tree[node]["revealed"] #Get all of the black squares
+    tree = maze2tree_dict(maze)
 
-    value, p_exit = 0, 0 #Initialize value as 0
+    value = 0
     
-    if tree[node]["pid"] != "NA": #NOT the root node: root node has no parent, no pid
-        
-        revealed_black = len(revealed) #Newly revealed tiles
-        
-        parent = tree[node]["pid"] #Get parent
-        total_black = tree[parent]["remains"] #Get total number of black tiles
-        
-        #What's the chance of just having found the exit this turn?
-        #Number of revealed tiles, divided by the tiles that remain.
-        p_exit = revealed_black/total_black
-        #Note that this is parent because we're ignoring any tiles from before this last turn
-        #We already know those tiles weren't the exit, or the game would be over
+    total_black = maze.get_hidden()
+
+
 
         weighted_prob = weight(p_exit, beta) #Apply PWU: human bias in probabilities
         
@@ -385,7 +371,6 @@ class DecisionModel:
     def model_copy(self):
         """
         Copy this model.
-
         """
         return DecisionModel(self.model_name, self.node_params, self.parent_params, 
                              self.raw_nodevalue_func, self.parent_nodeprob_func)

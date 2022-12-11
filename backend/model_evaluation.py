@@ -10,8 +10,7 @@ from maze import Maze, maze2tree, grid2maze
 #Models of human decision-making
 from decisionmodel import DecisionModel, DecisionModelRange, raw_nodevalue_comb, softmax
 #Converting data into our desired formats.
-#import parser
-from data_parser import get_csv, convert_data,  directions, mazes
+from data_parser import directions, mazes, trees, decisions_to_subject_decisions
 
 pp = pprint.PrettyPrinter(compact=False, width=90)
 
@@ -34,9 +33,7 @@ A short summary of the various functions in this file:
         (Related to the idea of, "how likely was the model to produce this behavior")
         
         *Uses maze.maze2tree, maze.Maze, decisionsmodel.DecisionModel
-        
-    decisions_to_subject_decisions(decisions): return subject_decisions
-        Convert decisions of various subjects into a more useful format.
+
     
     split_train_test_kfold(decisions_list, k=4): yield (train, test)
         Split up data into testing and training chunks to swap out for cross-validation purposes.
@@ -130,49 +127,6 @@ def avg_log_likelihood_decisions(decisions_list,  model ):
 
 
 
-def decisions_to_subject_decisions(decisions):
-    """
-    Convert all our player decisions into a more useful format.
-
-    Parameters
-    ----------
-    decisions : dictionary of dictionaries of dictionaries
-        outer dictionary: Dictionary of test subjects
-            
-        middle dictionary: Dictionary of mazes
-            
-        inner dictionary: Dictionary containing how our player moved: either nodes, or paths
-        
-            Stores the decisions made by every single subject we've tested.
-
-    Returns
-    -------
-    subject_decisions: dictionary of lists of tuples (str, int)
-        dictionary - each subject of our experiment
-            list - Each choice made by our subject
-                tuples - Contains (map name, node id)
-        
-        Contains all of the decisions made by each subject, as they move from node-to-node.
-        Decisions on all different maps are put into a single list.
-
-    """
-    
-    subject_decisions = {} #New format: list of all of our decisions for each subject
-    
-    for subject in decisions:
-        subject_decisions[subject] = [] #Default
-        
-        for maze in decisions[subject]:
-            
-            nodes = decisions[subject][maze]['nodes'] #Get all of the nodes for this pair
-            
-            #Each decision is an event: choosing one node, on one map
-            
-            new_decisions = [(maze, node) for node in nodes]
-            
-            subject_decisions[subject].extend( new_decisions )  #All of the decisions for one map
-            
-    return subject_decisions
 
 
 ###Handle Cross-Validations
@@ -322,14 +276,7 @@ eu_model_class = DecisionModelRange(model_name= 'Expected_Utility',
                                     parent_params_ranges = ((0,1,10),)
                                     )
 
-
-if __name__ == "__main__":
-    file = get_csv('trials_rows')
-
     
-    decisions = convert_data(file)
-    
-    subject_decisions = decisions_to_subject_decisions(decisions)
     
     #Question for Zoe: each subject seems to show up multiple times. 
     #Is that when they switch from one map to the next?

@@ -22,6 +22,10 @@ A short summary of the various functions in this file:
         
     convert_data(data): return dict
         Takes in ALL data, and converts it into a format our software can interpret.
+        
+            
+    decisions_to_subject_decisions(decisions): return subject_decisions
+        Convert decisions of various subjects into a more useful format.
 """
 
 
@@ -202,9 +206,52 @@ def convert_data(data):
         
     return decisions
 
+
+def decisions_to_subject_decisions(decisions):
+    """
+    Convert all our player decisions into a more useful format.
+
+    Parameters
+    ----------
+    decisions : dictionary of dictionaries of dictionaries
+        outer dictionary: Dictionary of test subjects
+            
+        middle dictionary: Dictionary of mazes
+            
+        inner dictionary: Dictionary containing how our player moved: either nodes, or paths
         
-def visualize_player_path(subject, maze):
-    """ Show how the player moves through the map."""
+            Stores the decisions made by every single subject we've tested.
+
+    Returns
+    -------
+    subject_decisions: dictionary of lists of tuples (str, int)
+        dictionary - each subject of our experiment
+            list - Each choice made by our subject
+                tuples - Contains (map name, node id)
+        
+        Contains all of the decisions made by each subject, as they move from node-to-node.
+        Decisions on all different maps are put into a single list.
+
+    """
+    
+    subject_decisions = {} #New format: list of all of our decisions for each subject
+    
+    for subject in decisions:
+        subject_decisions[subject] = [] #Default
+        
+        for maze in decisions[subject]:
+            
+            nodes = decisions[subject][maze]['nodes'] #Get all of the nodes for this pair
+            
+            #Each decision is an event: choosing one node, on one map
+            
+            new_decisions = [(maze, node) for node in nodes]
+            
+            subject_decisions[subject].extend( new_decisions )  #All of the decisions for one map
+            
+    return subject_decisions
+# def visualize_player_path(subject, maze):
+#     """ Show how the player moves through the map."""
 
 
 
@@ -220,10 +267,14 @@ if __name__ == "__main__":
     
     decisions = convert_data(file)
     
+    subject_decisions = decisions_to_subject_decisions(decisions)
+    
+    Maze1 = mazes['1']
+    
     m = decisions['02a063a0-768f-11ed-9574-33a31f13e24c']['1']
     
-    maze = mazes['1']
     
+    maze = Maze1
     
     for s in m['path']:
         maze = maze.update_map(pos=s)
