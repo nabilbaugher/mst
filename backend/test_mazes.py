@@ -692,11 +692,11 @@ def loadData(filename):
     return db
 
 mazes = loadData("mazes")
-trees = loadData("trees")
+graphs = loadData("graphs")
 
 
 """This allows us to go between mazes and trees, without running our expensive program repeatedly."""
-maze2tree_dict = {mazes[maze]: trees[maze] for maze in mazes}
+maze2graph_dict = {mazes[maze]: graphs[maze] for maze in mazes}
 
 
 

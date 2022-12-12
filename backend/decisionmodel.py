@@ -8,7 +8,7 @@ from collections import deque
 
 from maze import Maze, maze2tree_defunct, grid2maze, memoize
 
-from test_mazes import mazes, trees, maze2tree_dict
+from test_mazes import mazes, graphs, maze2tree_dict
 from data_parser import decisions_to_subject_decisions
 
 """

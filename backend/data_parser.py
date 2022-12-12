@@ -1,6 +1,6 @@
 import csv
 from maze import Maze, maze2graph, grid2maze
-from test_mazes import mazes, trees
+from test_mazes import mazes, graphs
 #Data pulled as csv
 
 """
@@ -155,7 +155,7 @@ def convert_subject(datapoint):
     for maze_name, keystrokes in mazes_and_keystrokes.items():
         
         maze = mazes[maze_name] #Get actual maze
-        tree = trees[maze_name] #Get matching tree
+        tree = graphs[maze_name] #Get matching tree
         
         info = parse_keystrokes(maze, tree, keystrokes)
         

@@ -13,7 +13,7 @@ import itertools
 
 from maze import Maze, maze2tree_defunct, grid2maze
 from decisionmodel import DecisionModel
-from test_mazes import mazes, trees
+from test_mazes import mazes, graphs
 
 pp = pprint.PrettyPrinter(compact=False)
 
