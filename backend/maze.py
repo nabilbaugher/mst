@@ -21,6 +21,9 @@ a system the subjects are able to interact with, and the experimenters can analy
 class Maze():
     The class representing our maze: takes our base grid, and adds some functionality to it.
     
+    get_hidden(self): return hidden
+        Get all the squares that our player hasn't seen on this map.
+    
     map_builder(self): return None
         Uses a description of a map, and turns it into a "grid".
         
@@ -49,7 +52,8 @@ class Maze():
 
 A short summary of the various functions in this file:
     
-    maze2tree(maze): returns tree
+    
+    DEPRECATED --- maze2tree(maze): returns tree
         Converts our map into a tree of every possible path our player can take, assuming
         they always move to reveal black tiles.
         
@@ -57,19 +61,9 @@ A short summary of the various functions in this file:
         
         ##Used so we can properly take advantage of memoizing
     
-    map_builder(map_): return None
-        Uses a description of a map, and turns it into a "grid".
-        
-        ##This function is used to keep compatibility if one wants to use a tuple of tuples (grid),
-        ##rather than a Maze object.
-    
-    map_visualizer(self, node=None): returns None  
-        Takes in our map, and prints a version that is more human-readable.
-    
-        *Uses maze.maze2tree, maze.update_map
-        
-        ##This function is used to keep compatibility if one wants to use a tuple of tuples (grid),
-        ##rather than a Maze object.
+    maze2graph(maze): return tree
+        Converts our map into a tree of every state our 
+
         
 
 
@@ -424,7 +418,6 @@ class Maze:
         
         return new_pos #Otherwise, move!
         
-    
     def update_map(self, pos):
         """
         
@@ -868,74 +861,7 @@ def maze2statetree(maze):
                     children[child_node]['path'] = path #Update to new path!
         
     return tree
-####################################
-#Functions used when we don't want to deal with mazes, just grids
 
-def map_builder(nrows, ncols, black, path, start, exit_=None):
-    """
-    This function turns a description of a map into its representation: a tuple of tuples, representing a grid.
-    Each position on this grid is a "tile".
-    
-    Parameters
-    ----------
-    nrows : int. Number of rows
-    ncols : int. Number of columns
-    
-    black : list of tuples (int, int)
-        The tiles our player has not viewed yet.
-    path :  list of tuples (int, int)
-        The tiles which are part of our path.
-    start : tuple (int, int). 
-        Our starting position on the map.
-    exit_:  tuple (int, int). Optional
-        The "win condition": if the player moves to this tile, the game ends. 
-        If this parameter is set to None, there is no exit. If it is set to 'rand', it will randomly select from the blacks
-
-    Any square not specified becomes a wall square, which the player cannot traverse.
-    
-    Returns
-    -------
-    tuple of tuples
-        A representation of our map, where different values represent different tile types.
-
-    """
-    maze = Maze(nrows, ncols, black, path, start, exit_ )
-    return maze.map
-
-def map_visualizer(map_, node=None):
-    """
-    Turns a map representation into a human-interpretable image.
-
-    Parameters
-    ----------
-    map_ : tuple of tuples of ints - represents a grid in the shape (nrows, ncols)
-           -tuple of tuples    has length = nrows, 
-           -each tuple of ints has length = ncols.
-            
-            Our "maze" the player is moving through.
-           
-    node : int, optional
-        Visualize a specific node for this map: in other words, show a partially explored map. 
-        node is simply the number id for one of these partial paths.
-            -Note: If the id is too high, there may be no corresponding node.
-
-    Returns
-    -------
-    None
-    
-    
-    Uses matplotlib.pyplot to make our map human-viewable.
-    
-    If node is given, the corresponding partially explored map will be displayed. Meaning, in this map,
-    our player will have moved around to explore some of the black tiles.
-    
-    The map structure will still match map_, but it will display the path taken with a dotted line,
-    And any squares that have been viewed by this player is 
-
-
-    """
-    maze = grid2maze(map_)
-    maze.visualize(node)
 
 def grid2maze(map_):
     nrows, ncols = len(map_), len(map_[0])
