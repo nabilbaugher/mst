@@ -1,5 +1,5 @@
 import csv
-from maze import Maze, maze2statetree, grid2maze
+from maze import Maze, maze2graph, grid2maze
 from test_mazes import mazes, trees
 #Data pulled as csv
 

@@ -657,8 +657,14 @@ def memoize(function):
     return wrapper
 
 #Use memoize to cache results of map2tree, save for re-use
+
+#########################################################
+#                                                       #
+#                       DEFUNCT                         #
+#                                                       #
+#########################################################
 @memoize
-def maze2tree(maze):
+def maze2tree_defunct(maze):
     """
     Parameters
     ----------
@@ -771,7 +777,7 @@ def gen_branch(maze):
 
 
 @memoize
-def maze2statetree(maze):
+def maze2graph(maze):
     """
     Converts our maze into a tree, representing the ways we can navigate through the maze.
     

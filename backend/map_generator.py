@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 
 ##Changing these: sorry! -Shaunticlair, 12/5/22, 6:12am
 #from mst_prototype import map_builder, map_visualizer
-from maze import map_builder, map_visualizer, maze2tree
+from maze import map_builder, map_visualizer, maze2tree_defunct
 
 #Visualize_maze works fine with map
 from simulation import visualize_maze, visualize_juxtaposed_best_paths

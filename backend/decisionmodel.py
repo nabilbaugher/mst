@@ -6,7 +6,7 @@ import random
 import pprint
 from collections import deque
 
-from maze import Maze, maze2tree, grid2maze, memoize
+from maze import Maze, maze2tree_defunct, grid2maze, memoize
 
 from test_mazes import mazes, trees, maze2tree_dict
 from data_parser import decisions_to_subject_decisions
@@ -411,7 +411,7 @@ class DecisionModel:
         """
 
         values_summary = {} # {node: {child_node: value, child_node: value, ...}}
-        tree = maze2tree(maze)
+        tree = maze2tree_defunct(maze)
             
 
         for node in tree: 

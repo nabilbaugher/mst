@@ -6,7 +6,7 @@ import random
 
 
 #Maze representation
-from maze import Maze, maze2tree, grid2maze
+from maze import Maze, maze2tree_defunct, grid2maze
 #Models of human decision-making
 from decisionmodel import DecisionModel, DecisionModelRange, raw_nodevalue_comb, softmax
 #Converting data into our desired formats.
@@ -101,7 +101,7 @@ def avg_log_likelihood_decisions(decisions_list,  model ):
 
     for maze, node in decisions_list: #Every decision this subject has made
         
-        tree = maze2tree(maze) #Create a tree for this current map
+        tree = maze2tree_defunct(maze) #Create a tree for this current map
         
         parent = tree[node]['pid'] #Get parent of our current node
 

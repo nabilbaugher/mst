@@ -11,7 +11,7 @@ import itertools
 # from loglikes import get_model_and_params
 # from map_generator import generate_spiral_maps
 
-from maze import Maze, maze2tree, grid2maze
+from maze import Maze, maze2tree_defunct, grid2maze
 from decisionmodel import DecisionModel
 from test_mazes import mazes, trees
 
@@ -98,7 +98,7 @@ def best_path(maze, model):
     """
     
     # model_params = get_model_and_params(model) #Unpack model for node_value purposes
-    TREE = maze2tree(maze)  #Generate tree
+    TREE = maze2tree_defunct(maze)  #Generate tree
     
     value_summary = model.node_values(maze) #Get all of our values
     
@@ -246,7 +246,7 @@ def visualize_path(maze, path, ax):
         return arr + np.random.randn(len(arr)) * stdev
 
     #Get a tree
-    TREE=maze2tree(maze)
+    TREE=maze2tree_defunct(maze)
     
     
     for node in path[1:]: #Go through each node

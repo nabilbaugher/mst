@@ -1,4 +1,4 @@
-from maze import Maze, grid2maze, maze2statetree
+from maze import Maze, grid2maze, maze2graph
 import pickle
 
 """
