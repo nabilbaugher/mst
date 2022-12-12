@@ -6,7 +6,7 @@ import random
 import pprint
 from collections import deque
 
-from maze import Maze, maze2tree, grid2maze
+from maze import Maze, maze2tree, grid2maze, memoize
 
 from test_mazes import mazes, trees, maze2tree_dict
 from data_parser import decisions_to_subject_decisions
@@ -162,42 +162,30 @@ def weight(p, beta):
 def compute_value_iteration(maze):
     pass
 
-# def loss_steps_taken_blind(maze, node):
-#     """
-#     Computes the loss associated with reaching the current node: does not compute the expected loss over 
-#     future events.
+def compute_exit_probability(parent_hidden, child_hidden, beta):
+    """
+    Get the probability that we find the exit at the child node.
     
-#     This loss is the number of steps taken,
-
-#     Parameters
-#     ----------
-#     maze : Maze object, our maze to navigate. Stores a maze.map object:
-        
-#         map: tuple of tuples of ints - represents a grid in the shape (maze.nrows, maze.ncols)
-#                -tuple of tuples    has length = nrows, 
-#                -each tuple of ints has length = ncols.
-               
-#                Our "maze" the player is moving through.
-           
-#     node : int
-#         Node id - identifies which node you're identifying the value of.
-        
-#         A node represents a partially explored map. 
-#         node is simply the number id for one of these partial paths.
-#             -Note: If the id is too high, there may be no corresponding node.
-
-#     Returns
-#     -------
-#     None.
-
-#     """
+    Helper function for raw_nodevalue_comb.
+    """
+    revealed =set(parent_hidden) - set(child_hidden) #Revealed is how many are no longer hidden
+    
+    prob_of_exit = len(revealed)/len(parent_hidden) #Probability that we see the right exit
+    
+    weighted_prob = weight(prob_of_exit, beta)   #Adjust based on human bias
+    weighted_comp = weight(1-prob_of_exit, beta) #Complement probability
+    
+    return weighted_prob, weighted_comp
     
 
+@memoize #Hopefully saves on time cost to compute?
 def raw_nodevalue_comb(maze, gamma=1, beta=1):
     ###NEEDS REWRITING
     """
     Get value of this node (this path through our maze), 
     according to our parameters, before applying softmax and thus tau.
+    
+    If parameters are set to 1, then value of this node is the expected distance from this node to the exit.
 
     Parameters
     ----------
@@ -235,57 +223,60 @@ def raw_nodevalue_comb(maze, gamma=1, beta=1):
     """
 
     tree = maze2tree_dict(maze)
-
-    value = 0
     
-    total_black = maze.get_hidden()
-
-
-
-        weighted_prob = weight(p_exit, beta) #Apply PWU: human bias in probabilities
+    #Get hidden squares
+    parent_hidden = maze.get_hidden()
+    parent_node = parent_hidden
+    
+    #Values for each child we could choose
+    child_losses = {}
+    
+    #All children
+    children = tree[parent_node]["children"]
+    
+    for child_node in children:
+        child_maze   = children[child_node]['map'] 
+        child_hidden = child_node #Node identified by hiddens
         
-        #Get distance to each possible exit: we assume one of them was correct!
-        player_pos     = np.array(tree[node]["pos"])
+        ###Here, we get the probability of finding an exit at this node
+        
+        weighted_prob, weighted_comp = compute_exit_probability(parent_hidden, child_hidden, beta)
+        
+        ###Distance from parent to child
+        
+        child_path = children[child_node]['path'] #What is the known path to this node?
+        parent_to_child = len(child_path) #Our guaranteed loss: how far to we walk to make this inspection?
+        
+        ###Average distance to exit: assuming the exit is at the child node
+        
+        player_pos     = np.array(child_maze.pos) 
         possible_exits = np.array(list(revealed))
         
-        diff_to_exit   = np.abs( possible_exits - player_pos) #Difference in position, take abs
-        dists_to_exit  = np.sum(diff_to_exit, axis=1) #Add x and y coords for manhattan dist
+        #Since we're on a grid, we take *manhattan distance*
         
-        #How many steps have we walked? How many steps will we walk to the exit?
-        start_to_node = tree[node]["steps_from_root"] 
-        node_to_goal  = np.mean( dists_to_exit ) #Average the distance to each exit 
+        delta_to_exit   = np.abs( possible_exits - player_pos) #Difference in position, take abs
+        dists_to_exit   = np.sum( delta_to_exit, axis=1) #Add x and y coords for manhattan dist
+        
+        child_to_exit   = np.mean(dists_to_exit ) #Average out each exit
+        
+        ###Average distance to exit: assuming exit is not at the child node, and is instead later.
+        child_to_exit_later = raw_nodevalue_comb(child_maze, gamma, beta)
+        
+        #No matter what, we will get this loss: we have to walk to the child to find out whether we win.
+        necessary_loss = parent_to_child
+        #Loss assuming we find the exit
+        success_loss = weighted_prob * child_to_exit
+        #Loss assuming we don't find the exit at this child node
+        failure_loss = gamma * weighted_comp *  child_to_exit_later
+        
+        #Expected loss: each loss has been scaled by its probability of occurring
+        child_loss = necessary_loss + success_loss + failure_loss
+        child_losses[child_node] = child_loss #All losses
+        
+    #We pick the child that incurs the least loss
+    true_loss = min(child_losses, key = lambda child: child_losses[child])
 
-        ###We originally had essentially
-        ###node_to_goal = np.mean(list(revealed))
-        ###Which doesn't seem to make any sense. Fixed?
-        
-        #Loss is the distance to the exit: add up two distance components.
-        loss = start_to_node + node_to_goal
-        
-        #Current step value applied.
-        value += weighted_prob * loss #Scale loss by probability
-    
-    #If we're at the root node, we haven't moved: there's no way that we already won.
-    #Value for current step is 0.
-        
-    if tree[node].get("children", []): #Does this node have children?
-        min_child_value = float("inf") #We want to pick min value: any will beat float("inf")
-
-        for child in tree[node]["children"]: #Iter over kids
-            child_value = raw_nodevalue_comb(maze, child, gamma, beta) #Do recursion
-            
-            if child_value < min_child_value: #Update val to find optimal child
-                min_child_value = child_value
-        
-        weighted_comp = weight(1-p_exit, beta) #Re-weight the complement, (1-p)
-        
-        #Gamma is our discount factor: applied for future steps.
-        value += gamma * weighted_comp * min_child_value
-        #Future step value applied
-
-    return value
-
-
+    return true_loss
 
 
   

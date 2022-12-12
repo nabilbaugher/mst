@@ -659,8 +659,8 @@ def memoize(function):
     memo = {}
     def wrapper(*args):
         if args not in memo:
-            memo[args] = function(*args)
-        return memo[args]
+            memo[tuple(*args)] = function(*args)
+        return memo[tuple(*args)]
     return wrapper
 
 #Use memoize to cache results of map2tree, save for re-use
@@ -778,7 +778,7 @@ def gen_branch(maze):
 
 
 @memoize
-def maze2statetree(maze, no_maze_objects=False):
+def maze2statetree(maze):
     """
     Converts our maze into a tree, representing the ways we can navigate through the maze.
     
