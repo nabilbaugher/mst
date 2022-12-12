@@ -8,7 +8,7 @@ from collections import deque
 
 from maze import Maze, maze2tree_defunct, grid2maze, memoize
 
-from test_mazes import mazes, graphs, maze2tree_dict
+from test_mazes import mazes, graphs #maze2graph_dict
 from data_parser import decisions_to_subject_decisions
 
 """
@@ -62,11 +62,10 @@ class DecisionModel():
     update_params(self, node_params=None, parent_params=None): return None
         Update the parameters of this model.
         
-    node_values(self, maze, parent=None): return values
-        Calculate the value of each node in the maze. 
-        Only the children of one parent, if that parent is specified.
+    choice_probs(self, maze): return probs_summary
+        Calculate the probability of choosing a child node, given you are in a particular parent node.
         
-        *Uses maze2tree
+        *Uses test_mazes.graphs
         
 
 class DecisionModelRange(DecisionModel):
@@ -151,9 +150,12 @@ def weight(p, beta):
     
     """
     
-    return np.exp( -1 * (-np.log(p) )**beta )
+    return np.exp( -1 * (-err_log(p) )**beta )
 
-
+def err_log(x):
+    if x == 0:
+        return -float('inf')
+    return np.log(x)
 
 
 ###Rather than creating multiple different models, 
@@ -176,11 +178,28 @@ def compute_exit_probability(parent_hidden, child_hidden, beta):
     weighted_comp = weight(1-prob_of_exit, beta) #Complement probability
     
     return weighted_prob, weighted_comp
+
+
+def compute_exit_distance(revealed, child_pos):
+    """
+    Assuming that we reveal an exit at our current node, how far away is that exit from the node on average?
     
+    Helper function for raw_nodevalue_comb.
+    """
+    #Get the positions
+
+    player_pos     = np.array(child_pos) 
+    possible_exits = np.array(list(revealed))
+    
+    #Since we're on a grid, we take *manhattan distance*
+    
+    delta_to_exit   = np.abs( possible_exits - player_pos) #Difference in position, take abs
+    dists_to_exit   = np.sum( delta_to_exit, axis=1) #Add x and y coords for manhattan dist
+    
+    return np.mean(dists_to_exit ) #Average out each exit
 
 @memoize #Hopefully saves on time cost to compute?
 def raw_nodevalue_comb(maze, gamma=1, beta=1):
-    ###NEEDS REWRITING
     """
     Get value of this node (this path through our maze), 
     according to our parameters, before applying softmax and thus tau.
@@ -221,43 +240,35 @@ def raw_nodevalue_comb(maze, gamma=1, beta=1):
         This does not take softmax into account.
 
     """
-
-    tree = maze2tree_dict(maze)
+        
+    graph = graphs[maze.name]
     
-    #Get hidden squares
+    #Data about parent
+    parent_node = maze
     parent_hidden = maze.get_hidden()
-    parent_node = parent_hidden
     
     #Values for each child we could choose
     child_losses = {}
     
     #All children
-    children = tree[parent_node]["children"]
+    children = graph[parent_node]["children"]
     
-    for child_node in children:
-        child_maze   = children[child_node]['map'] 
-        child_hidden = child_node #Node identified by hiddens
+    for child_maze, path_to_child in children.items():
+        child_node   = child_maze 
+        child_hidden = child_maze.get_hidden()
         
         ###Here, we get the probability of finding an exit at this node
-        
         weighted_prob, weighted_comp = compute_exit_probability(parent_hidden, child_hidden, beta)
         
-        ###Distance from parent to child
-        
-        child_path = children[child_node]['path'] #What is the known path to this node?
-        parent_to_child = len(child_path) #Our guaranteed loss: how far to we walk to make this inspection?
+        #Distance from parent to child
+        parent_to_child = len(path_to_child) #Our guaranteed loss: how far to we walk to make this inspection?
         
         ###Average distance to exit: assuming the exit is at the child node
+        revealed = set(parent_hidden) - set(child_hidden)
         
-        player_pos     = np.array(child_maze.pos) 
-        possible_exits = np.array(list(revealed))
+        child_pos = child_maze.pos
         
-        #Since we're on a grid, we take *manhattan distance*
-        
-        delta_to_exit   = np.abs( possible_exits - player_pos) #Difference in position, take abs
-        dists_to_exit   = np.sum( delta_to_exit, axis=1) #Add x and y coords for manhattan dist
-        
-        child_to_exit   = np.mean(dists_to_exit ) #Average out each exit
+        child_to_exit = compute_exit_distance(revealed, child_pos)
         
         ###Average distance to exit: assuming exit is not at the child node, and is instead later.
         child_to_exit_later = raw_nodevalue_comb(child_maze, gamma, beta)
@@ -272,10 +283,14 @@ def raw_nodevalue_comb(maze, gamma=1, beta=1):
         #Expected loss: each loss has been scaled by its probability of occurring
         child_loss = necessary_loss + success_loss + failure_loss
         child_losses[child_node] = child_loss #All losses
-        
+    
+    if children == {}:
+        return 0
+    
     #We pick the child that incurs the least loss
-    true_loss = min(child_losses, key = lambda child: child_losses[child])
-
+    true_loss = min(child_losses.values())
+    
+    
     return true_loss
 
 
@@ -378,10 +393,9 @@ class DecisionModel:
             self.parent_params = parent_params
             
     
-    def node_values(self, maze, parent=None):
-        ###NEEDS REWRITING
+    def choice_probs(self, maze, parent=None):
         """
-        Returns the value of every possible path (node) for the entire map.
+        Returns the probability of every choice we could make in the graph.
         
 
         Parameters
@@ -400,45 +414,52 @@ class DecisionModel:
 
         Returns
         -------
-        values_summary : 
+        probs_summary : 
             Dictionary of dictionaries
-                Outer dictionary: key - each node in our tree excluding the root node.
+                Outer dictionary: key - each node in our graph ("pre-choice" state)
                                   val - dict of each child and their val.
                 
                 Inner dictionary: key - the child node we're focused on.
-                                  val - the value of that child node.
+                                  val - the probability of our model choosing that child node,
+                                        given our parent node.
 
         """
 
-        values_summary = {} # {node: {child_node: value, child_node: value, ...}}
-        tree = maze2tree_defunct(maze)
+        probs_summary = {} # {node: {child_node: value, child_node: value, ...}}
+        graph = graphs[maze.name]
             
 
-        for node in tree: 
-            
-            if parent!=None: #Exclusively focus on this node, rather than others
-                if node != parent:
-                    continue
+        for parent_node in graph: 
 
-            children = tree[node]['children']
+            children = graph[parent_node]['children']
 
             # If node doesn't allow a choice, ignore it.
             if len(children) <= 1:
                 continue
             
             #Inner dictionary
-            values_summary[node] = {}
+            probs_summary[parent_node] = {}
             
-            #Calulate value of each child, pre-softmax
-            raw_values = [ self.raw_nodevalue_func(maze, child_node, *self.node_params) 
-                          for child_node in children ]
+            raw_values = []
+            
+            ###Note: this way of doing the loss is still a little weird
+            ###There's also some repeat logic from the other function: maybe we can do something about that?
+            
+            for child_maze, path in children.items():
+                parent_to_child = len(path) #Distance to child
+                #Average value of this child: average distance to exit
+                child_to_exit_all = self.raw_nodevalue_func(child_maze, *self.node_params) 
+                
+                value = parent_to_child + child_to_exit_all
+                
+                raw_values.append(value)
             
             #Apply whatever function you want to these raw values
-            values = self.parent_nodeprob_func(raw_values, *self.parent_params) 
+            probs = self.parent_nodeprob_func(raw_values, *self.parent_params) 
             
-            values_summary[node] = {child_node: val for child_node,val in zip(children, values)}
+            probs_summary[parent_node] = {child_node: prob for child_node,prob in zip(children, probs)}
         
-        return values_summary
+        return probs_summary
     
 
 
@@ -579,3 +600,8 @@ class DecisionModelRange(DecisionModel):
         return models[best_index]
             
 
+if __name__ == '__main__':
+    Maze1= mazes['1']
+    model = DecisionModel("basic")
+    
+    vals = model.choice_probs(Maze1)

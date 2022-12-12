@@ -61,8 +61,9 @@ A short summary of the various functions in this file:
         
         ##Used so we can properly take advantage of memoizing
     
-    maze2graph(maze): return tree
-        Converts our map into a tree of every state our 
+    maze2graph(maze): return graph
+        Converts our map into a graph, representing all of the choices we could make as we move through
+        the maze.
 
         
 
@@ -102,23 +103,36 @@ Reminder of the params typical format
 
 class Maze:
     
-    def __init__(self, nrows, ncols, black, path, start, pos=None, exit_=None):
+    def __init__(self, nrows, ncols, black, path, start, 
+                 exit_ = None, pos = None, name = None):
         
         self.nrows, self.ncols = nrows, ncols
         self.black, self.path, self.start, self.exit = black, path, start, exit_
         
-        self.pos=pos
+        self.pos, self.name = pos, name
         
         if self.pos==None: #Position stored internal to the maze
             self.pos=start
+
             
         self.map_builder() #Build map representation
         
+        
+            
+        
     def __str__(self):
-        return str(self.map)
+        string='Maze '
+        if self.name!=None:
+            string+=self.name
+        else:
+            string+='Unnamed'
+            
+        string+=" : position "+str(self.pos)
+        
+        return string
     
     def __repr__(self):
-        return repr(self.map)
+        return str(self)
     
     def __getitem__(self, index):
         return self.map[index]
@@ -131,14 +145,17 @@ class Maze:
         return len(self.map)
     
     def __eq__(self, other):
+        """
+        A maze is uniquely identified by its map, and your current position.
+        """
         
         if ( type(self) != type(other) ):
             return False
         
-        return self.map == other.map
+        return self.map == other.map and self.pos == other.pos
     
     def __hash__(self):
-        return hash(self.map)
+        return hash( (self.map, self.pos) )
 
     def get_hidden(self):
         """Gets all hidden squares there are, as a list."""
@@ -458,7 +475,7 @@ class Maze:
             new_exit=self.exit
 
         new_maze = Maze(self.nrows, self.ncols, new_black, new_path, self.start, 
-                        pos=pos, exit_=new_exit)
+                        pos=pos, exit_=new_exit, name=self.name)
         
 
         return new_maze
@@ -523,7 +540,7 @@ class Maze:
     
                 if observations: #If we reveal a black square, then we're finished.
                     #Show the whole path, paired with the squares which are revealed.
-                    paths.append( ( path + [new_pos], observations ) )
+                    paths.append( path + [new_pos])
                     
                 else: #No observation: path not ended, keep going.
                     agenda.append(path + [new_pos])
@@ -542,7 +559,10 @@ class Maze:
                -each tuple of ints has length = ncols.
                 
                 Our "maze" the player is moving through.
-               
+        
+        pos: tuple (int, int), optional
+            Visualize our map to include a dot at this position.
+        
         node : int, optional
             Visualize a specific node for this map: in other words, show a partially explored map. 
             node is simply the number id for one of these partial paths.
@@ -652,8 +672,8 @@ def memoize(function):
     memo = {}
     def wrapper(*args):
         if args not in memo:
-            memo[tuple(*args)] = function(*args)
-        return memo[tuple(*args)]
+            memo[tuple([*args])] = function(*args)
+        return memo[tuple([*args])]
     return wrapper
 
 #Use memoize to cache results of map2tree, save for re-use
@@ -689,8 +709,6 @@ def maze2tree_defunct(maze):
     """
     if type(maze)==tuple: #If we have a grid
         maze = Maze(maze)
-    
-    #pp.pprint(map_) #Print map
         
     # determine start position
     remains = 0
@@ -723,14 +741,11 @@ def maze2tree_defunct(maze):
     #BFS in progress
     # agenda = [(0, map_)] #(node, current map)
     agenda = deque([(0, maze)]) #(node, current map)
-    #print('1', tree)
     
     while agenda: # in each loop, find and append children
 
         node, new_map = agenda.popleft() #Grab first element
         pos = tree[node]['pos'] #Current position
-        
-        #print('PPPPP', possible_paths(updated_map, pos)) #What next moves are available?
         
         #Create a node for each next move
         #nobservation=new_observation output
@@ -761,36 +776,17 @@ def maze2tree_defunct(maze):
             #Add child to tree
             tree[new_node] = branch
             
-        # print(branch['depth'])
-
-    #print('t', tree)
     return tree
-
-def gen_branch(maze):
-    """
-    Create a new branch in our tree.
-    """
-    branch = {'map':maze,             #Dictionary of the form -
-              'children': {}}         #{child: {'path': path from parent to child,
-                                               #'maze': child maze}}       
-    return branch       
-
 
 @memoize
 def maze2graph(maze):
     """
-    Converts our maze into a tree, representing the ways we can navigate through the maze.
+    Converts our maze into a "state transition graph", representing the ways we can navigate through the maze.
     
-    However, this version is optimized over maze2tree: in that function, every possible path gets its own 
-    branch, and thus branches increase very quickly. Each of these paths could be seen as a "state".
+    Every state is one maze, where n tiles are hidden.
+    The particular tiles which are hidden, and the player's location, uniquely define the maze.
     
-    In this new tree, however, a "state" has been redefined: a state is uniquely defined by which black
-    squares have been revealed. 
-    
-    Thus, two mazes with the same hidden squares, but different paths to that point, are now the "same".
-    
-    This should significantly improve the time and space cost to represent the choices available to our
-    player, in a way that preserves necessary information.
+    The transition is given by which maze we choose to move to next.
     
     Parameters
     ----------
@@ -816,57 +812,50 @@ def maze2graph(maze):
     if type(maze) in (tuple, list): #If we have a grid, convert it.
         maze = grid2maze(maze)    
 
-    ##Create tree to edit
-
-    #First, our root node   
-    root_branch = gen_branch(maze)
-    root_node = maze.get_hidden()  #A state is uniquely identified by which tiles are hidden.
+    ###Create tree to edit 
+    root_maze = maze #A state is the position, and which tiles are hidden.
     
-    tree = {root_node: root_branch}
+    graph = {root_maze: { 'children':{} } } #{'children':{childMaze: path}}
         
     #BFS in progress
-    agenda = deque([ (root_node, maze) ]) #(node, current map)
+    agenda = deque([ root_maze ]) #(node, current map)
     
     while agenda: # in each loop, find and append children
-
-        parent_node, parent_maze = agenda.popleft() #Grab first element
+        parent_maze = agenda.popleft() #Grab first element
         
         #Try each new move
-        for path, revealed in parent_maze.possible_paths(): 
+        for path in parent_maze.possible_paths(): 
             
             #Get all info about new condition
             new_pos = path[-1]
-            #print(pos, new_pos)
             child_maze = parent_maze.update_map(new_pos) #Create new maze 
-            child_node = child_maze.get_hidden() #Label for new maze
             
-            if not child_node in tree: #New node!
-                branch = gen_branch(maze=child_maze) #Create new node
+            if not child_maze in graph: #New node!
+                #branch = gen_branch(maze=child_maze) #Create new node
                 
                 
-                tree[child_node] = branch #Add this node to the tree
+                graph[child_maze] = {'children':{}} #Add this node to the graph
                 
-                agenda.append((child_node, child_maze)) #New nodes need to be explored further!
+                agenda.append(child_maze) #New nodes need to be explored further!
                 
                 # parent_maze.visualize()
                 # child_maze.visualize()
-                
 
             #Update parent's children
-            children = tree[parent_node]['children'] #Hoping this aliases correctly
+            children = graph[parent_maze]['children'] #Hoping this aliases correctly
             
-            if not child_node in children: #New child!
-                children[child_node] = {'path':path, 'maze':child_maze}
+            if not child_maze in children: #New child!
+                children[child_maze] = path
             
             else: #Not new child: is this a better path?
                 
-                old_path = children[child_node]
+                old_path = children[child_maze]
                 
                 if len(path) < len(old_path): #If this path is better, take it
                     
-                    children[child_node]['path'] = path #Update to new path!
+                    children[child_maze] = path #Update to new path!
         
-    return tree
+    return graph
 
 
 def grid2maze(map_):

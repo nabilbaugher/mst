@@ -1,6 +1,6 @@
 import csv
 from maze import Maze, maze2graph, grid2maze
-from test_mazes import mazes, graphs
+from test_mazes import mazes, graphs#, maze2graph_dict
 #Data pulled as csv
 
 """
@@ -23,7 +23,6 @@ A short summary of the various functions in this file:
     convert_data(data): return dict
         Takes in ALL data, and converts it into a format our software can interpret.
         
-            
     decisions_to_subject_decisions(decisions): return subject_decisions
         Convert decisions of various subjects into a more useful format.
 """
@@ -49,7 +48,7 @@ def get_csv(filename):
     return out
 
 
-def parse_keystrokes(maze, tree, keystrokes):
+def parse_keystrokes(maze, graph, keystrokes):
     """
     Convert keystrokes into our path through the maze, and the nodes we move through. 
 
@@ -78,7 +77,8 @@ def parse_keystrokes(maze, tree, keystrokes):
     
     
     path=   [maze.start]
-    nodes = [max(tree, key = lambda hidden: len(hidden) )]  #First node => most hidden squares!
+    
+    nodes = [maze]  #First node => most hidden squares!
     
     node_changes = []
     
@@ -91,25 +91,23 @@ def parse_keystrokes(maze, tree, keystrokes):
         curr_pos =  path[-1]
         curr_node = nodes[-1]
         
-        curr_maze = tree[curr_node]['map']
+        curr_maze = curr_node
         
         #How did our player move, based on this keystroke?
         shift = directions[stroke] 
         new_pos = maze.move(curr_pos, shift)
         
         if new_pos==curr_pos: #Nothing changed
-            # print("blocked!")
             continue
+        
         path.append(new_pos) #Otherwise, add to path
         
         new_maze = curr_maze.update_map(new_pos)
         
-        #Check if we've revealed anything
-        new_hidden = new_maze.get_hidden()
-        
-        if curr_maze.get_hidden() != new_hidden:
+        #Check if we've revealed anything - the map would have changed
+        if curr_maze.map != new_maze.map:
             
-            nodes.append(new_hidden) #We've move into a new node!
+            nodes.append(new_maze) #We've move into a new node!
             node_changes.append(new_pos)
 
     
@@ -155,9 +153,9 @@ def convert_subject(datapoint):
     for maze_name, keystrokes in mazes_and_keystrokes.items():
         
         maze = mazes[maze_name] #Get actual maze
-        tree = graphs[maze_name] #Get matching tree
+        graph = graphs[maze_name] #Get matching tree
         
-        info = parse_keystrokes(maze, tree, keystrokes)
+        info = parse_keystrokes(maze, graph, keystrokes)
         
         output[maze_name] = info #Save the data 
         
@@ -236,22 +234,18 @@ def decisions_to_subject_decisions(decisions):
     
     subject_decisions = {} #New format: list of all of our decisions for each subject
     
-    for subject in decisions:
+    for subject, subject_data in decisions.items():
         subject_decisions[subject] = [] #Default
         
-        for maze in decisions[subject]:
-            
-            nodes = decisions[subject][maze]['nodes'] #Get all of the nodes for this pair
+        for maze, maze_data in subject_data.items():
+            nodes = maze_data['nodes'] #Get all of the nodes for this pair
             
             #Each decision is an event: choosing one node, on one map
-            
             new_decisions = [(maze, node) for node in nodes]
             
             subject_decisions[subject].extend( new_decisions )  #All of the decisions for one map
             
     return subject_decisions
-# def visualize_player_path(subject, maze):
-#     """ Show how the player moves through the map."""
 
 
 

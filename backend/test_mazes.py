@@ -5,8 +5,13 @@ import pickle
 This file contains several of our mazes we can test our code with, making sure it runs correctly.
 """
 
-# mazes = {}
-# trees = {}
+directions = {'up':  (-1, 0),
+             'down': ( 1, 0),
+             'left': ( 0,-1),
+             'right':( 0, 1)}
+
+mazes = {}
+graphs = {}
 
 class maps():
 
@@ -131,8 +136,6 @@ class maps():
             shift = directions[direction]
             
             new_pos = maze.move(pos, shift)
-            
-            print(new_pos)
             
             maze = maze.update_map(pos, new_pos)
             
@@ -696,27 +699,29 @@ graphs = loadData("graphs")
 
 
 """This allows us to go between mazes and trees, without running our expensive program repeatedly."""
-maze2graph_dict = {mazes[maze]: graphs[maze] for maze in mazes}
+# maze2graph_dict = {graphs: graphs[maze] for maze in mazes}
 
 
 
 # if __name__ == "__main__":
+#     pass
         
 #     for i in range(30): 
         
 #         mazes[str(i)] = grid2maze(maps.__dict__["maze_"+str(i)]) #Save data
-        
-#         trees[str(i)] = maze2statetree(mazes[str(i)]) #Save more data
-        
-#         print('done!',i)
+#         mazes[str(i)].name = str(i)
+
+#         graphs[str(i)] = maze2graph(mazes[str(i)]) #Save more data
+
+#         print('done!',i, len(graphs[str(i)]))
         
 #     storeData(mazes,"mazes")
-#     storeData(trees,"trees")
+#     storeData(graphs,"graphs")
 
 # for i in range(1,10):
 #     mazes['map_'+str(i)] = grid2maze( maps.__dict__["map_"+str(i)] )
     
-Maze2=mazes['2']
+# Maze2=mazes['2']
     
 # tree = maze2statetree(Maze2)
 
