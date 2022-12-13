@@ -93,6 +93,10 @@ class DecisionModelRange(DecisionModel):
         *Uses self.gen_models
 """
 
+###############
+# Code begins #
+###############
+
 def softmax(values, tau):
     """
     Applies the softmax function to our inputs. Tau allows us to emphasize or de-emphasize the
@@ -115,15 +119,13 @@ def softmax(values, tau):
     -------
     list
         Returns the output of a softmax over our values.
-
     """
-
     numer = [np.exp(-v * ( 1 /tau)) for v in values]
     denom = sum(numer)
     return [ n /denom for n in numer]
 
-""" probability weighting function: convert probability p to weight """
 
+# probability weighting function: convert probability p to weight
 def weight(p, beta):
     """
     Re-weights probabilities, modelling on the human tendency 
@@ -146,11 +148,9 @@ def weight(p, beta):
     -------
     float
         Result of weighting: a probability in range [0,1]
-    
-    
     """
-    
     return np.exp( -1 * (-err_log(p) )**beta )
+
 
 def err_log(x):
     if x == 0:
@@ -187,12 +187,10 @@ def compute_exit_distance(revealed, child_pos):
     Helper function for raw_nodevalue_comb.
     """
     #Get the positions
-
     player_pos     = np.array(child_pos) 
     possible_exits = np.array(list(revealed))
     
     #Since we're on a grid, we take *manhattan distance*
-    
     delta_to_exit   = np.abs( possible_exits - player_pos) #Difference in position, take abs
     dists_to_exit   = np.sum( delta_to_exit, axis=1) #Add x and y coords for manhattan dist
     
@@ -298,36 +296,27 @@ def raw_nodevalue_comb(maze, gamma=1, beta=1):
 def generate_combinations(array):
     """
     For n different sub-arrays, find every way to draw one element from each array.
-    
     For example, [a,b] and [1,2] make [ [a,1], [a, 2], [b,1], [b,2]
     
     Parameters
     ----------
     array: list of lists 
         Our outer list contains multiple arrays of elements that we want to use in our combination.
-        
         We will be pulling one element from each inner list to get our combinations.
     
     Returns
     -------
     combinations: list of lists
         Each list is a unique combination of elements: one from each of our starting arrays.
-
     """
-    combinations = []
-    
     if len(array)==0: #Base case: no arrays, no combinations.
         return [[]]
     
-    
+    combinations = []
     for elem in array[0]: #Otherwise, recurse: we iterate over our first array
-        
         future_combinations = generate_combinations(array[1:]) #Iterate over the next array, then the next one...
-        
         for comb in future_combinations: #We've got all of our results: combine them with our current element
-            
-            combinations.append( [elem] + comb ) #Assemble full combination
-            
+            combinations.append( [elem] + comb ) #Assemble full combination       
     return combinations
 
 
@@ -384,7 +373,6 @@ class DecisionModel:
     def update_params(self, node_params=None, parent_params=None):
         """
             Update our parameters based on what we are given.
-            
             View __init__ for description.
         """
         if node_params:
@@ -396,7 +384,6 @@ class DecisionModel:
     def choice_probs(self, maze, parent=None):
         """
         Returns the probability of every choice we could make in the graph.
-        
 
         Parameters
         ----------
@@ -422,43 +409,34 @@ class DecisionModel:
                 Inner dictionary: key - the child node we're focused on.
                                   val - the probability of our model choosing that child node,
                                         given our parent node.
-
         """
-
         probs_summary = {} # {node: {child_node: value, child_node: value, ...}}
         graph = graphs[maze.name]
-            
-
+        
         for parent_node in graph: 
-
             children = graph[parent_node]['children']
-
+            
             # If node doesn't allow a choice, ignore it.
             if len(children) <= 1:
                 continue
             
             #Inner dictionary
             probs_summary[parent_node] = {}
-            
             raw_values = []
             
             ###Note: this way of doing the loss is still a little weird
             ###There's also some repeat logic from the other function: maybe we can do something about that?
-            
             for child_maze, path in children.items():
                 parent_to_child = len(path) #Distance to child
                 #Average value of this child: average distance to exit
                 child_to_exit_all = self.raw_nodevalue_func(child_maze, *self.node_params) 
-                
                 value = parent_to_child + child_to_exit_all
-                
                 raw_values.append(value)
             
             #Apply whatever function you want to these raw values
             probs = self.parent_nodeprob_func(raw_values, *self.parent_params) 
-            
             probs_summary[parent_node] = {child_node: prob for child_node,prob in zip(children, probs)}
-        
+
         return probs_summary
     
 
@@ -501,7 +479,6 @@ class DecisionModelRange(DecisionModel):
         """
         Create new model using parameters!
         """
-        
         new_model = self.model_copy() #Create copy of this model!
         new_model.update_params(node_params, parent_params)
         
@@ -516,7 +493,6 @@ class DecisionModelRange(DecisionModel):
         list of lists
             Each inner list represents a different parameter.
             The floats contained within are values for that parameter.
-
         """
         return [ list( np.linspace(*param_range) )
                 for param_range in self.node_params_ranges ]
@@ -543,24 +519,18 @@ class DecisionModelRange(DecisionModel):
         -------
         models : list of DecisionModel objects.
             All of our models.
-
         """
         node_params_arrays =   self.gen_node_param_range()
-        
         parent_params_arrays = self.gen_parent_param_range()
         
         all_node_params = generate_combinations(node_params_arrays)
         all_parent_params = generate_combinations(parent_params_arrays)
         
-        models = []
-        
         #Generate all of the models we want
-        
+        models = []
         for node_params in all_node_params: #Every parameter combo creates its own model
             for parent_params in all_parent_params:
-        
                 new_model = self.gen_model(node_params, parent_params)
-                
                 models.append(new_model)
                 
         return models
@@ -582,26 +552,19 @@ class DecisionModelRange(DecisionModel):
         -------
         model: DecisionModel object
             Model which performed best on the given task.
-
         """
-        
         models = self.gen_models()
-        
         performance = {}
         
         for index, model in enumerate(models):
-            
             evaluation = self.evaluation_function(decisions_list,  model ) #Get model performance
-            
             performance[index] = evaluation #Save each value
             
         best_index = max( performance, key= performance[index] ) #Find the best model
-        
         return models[best_index]
             
 
 if __name__ == '__main__':
     Maze1= mazes['1']
     model = DecisionModel("basic")
-    
     vals = model.choice_probs(Maze1)
