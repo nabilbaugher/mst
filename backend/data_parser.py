@@ -222,13 +222,12 @@ def decisions_to_subject_decisions(decisions):
 
     Returns
     -------
-    subject_decisions: dictionary of lists of tuples (str, int)
-        dictionary - each subject of our experiment
-            list - Each choice made by our subject
-                tuples - Contains (map name, node id)
-        
-        Contains all of the decisions made by each subject, as they move from node-to-node.
-        Decisions on all different maps are put into a single list.
+    subject_decisions: dictionary where key is subject, value is a decisions_list
+        decisions_list : list of tuples (Maze, Maze)
+            Each tuple represents one decision our player made, moving between two nodes: (parent_maze, child_maze)
+            To reach this node, our player has to have gone from its parent node, and chosen this option.
+            
+            This list in total represents every decision our player made.
 
     """
     
@@ -240,8 +239,9 @@ def decisions_to_subject_decisions(decisions):
         for maze, maze_data in subject_data.items():
             nodes = maze_data['nodes'] #Get all of the nodes for this pair
             
-            #Each decision is an event: choosing one node, on one map
-            new_decisions = [(maze, node) for node in nodes]
+            #Each decision is an event: making one choice means moving between two nodes
+            new_decisions = [( nodes[i],nodes[i+1] ) 
+                             for i in range(len(nodes)-1) ]
             
             subject_decisions[subject].extend( new_decisions )  #All of the decisions for one map
             
@@ -265,15 +265,19 @@ if __name__ == "__main__":
     
     Maze1 = mazes['1']
     
-    m = decisions['02a063a0-768f-11ed-9574-33a31f13e24c']['1']
+    m = decisions['02a063a0-768f-11ed-9574-33a31f13e24c']
+    
+    n = m['1']
+    
+    ex_decisions = subject_decisions['02a063a0-768f-11ed-9574-33a31f13e24c']
     
     
     maze = Maze1
     
-    for s in m['path']:
+    for s in n['path']:
         maze = maze.update_map(pos=s)
         print(s)
-        if s in m['node_changes']:
+        if s in n['node_changes']:
             print("Bazinga uwu") #New node!
         
         maze.visualize(s)

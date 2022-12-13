@@ -698,8 +698,6 @@ mazes = loadData("mazes")
 graphs = loadData("graphs")
 
 
-"""This allows us to go between mazes and trees, without running our expensive program repeatedly."""
-# maze2graph_dict = {graphs: graphs[maze] for maze in mazes}
 
 
 
