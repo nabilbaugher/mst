@@ -289,31 +289,122 @@ def blind_nodevalue_comb(maze, gamma=1, beta=1):
     
     return true_loss
 
+
+def get_distances_to_exit(maze):
+    """
+    Get the distance from each node to the exit.
+    """
+    nrows = maze.nrows
+    ncols = maze.ncols
+    result = [[float('inf') for _ in range(nrows)] for _ in range(ncols)]
+    result[maze.exit[0]][maze.exit[1]] = 0
+    non_walls = set(maze.black) | set(maze.path) | set([maze.exit]) | set([maze.start])
+    
+    # bfs
+    q = deque()
+    q.append((maze.exit[0], maze.exit[1], 0))
+    visited = set()
+    while q:
+        row, col, distance = q.popleft()
+        if (row, col) in visited:
+            continue
+        if (row, col) not in non_walls:
+            continue
+        
+        result[row][col] = distance
+        q.append((row + 1, col, distance + 1))
+        q.append((row - 1, col, distance + 1))
+        q.append((row, col + 1, distance + 1))
+        q.append((row, col - 1, distance + 1))
+        visited.add((row, col))
+    return result
+    
+
+
 @memoize
 def value_iteration(prev_mazes, learning_rate=.5):
     """
     For each maze, calculate the value of each node based on the position of the exit.
     Calculated as min distance to exit from each node.
     Essentially "seen_nodevalue_comb"
+    Returns matrix of values for each node.
     """
-    # prev_values = value_iteration(prev_mazes[:-1], learning_rate) if len(prev_mazes) > 1 else {}
-    pass
+    nrows = prev_mazes[0].nrows
+    ncols = prev_mazes[0].ncols
+    result = [[0 for _ in range(nrows)] for _ in range(ncols)]
+    if len(prev_mazes) > 1:
+        result = value_iteration(prev_mazes[:-1], learning_rate)
     
-    
+    distances = get_distances_to_exit(prev_mazes[-1])
+    for i in range(nrows):
+        for j in range(ncols):
+            result[i][j] = (1 - learning_rate) * result[i][j] + learning_rate * distances[i][j]
+    return result
+
+
+def get_non_wall_filter(maze, filter_):
+    """
+    returns a filter that has zero values for all positions that are walls and all values add to 1.
+    """
+    non_walls = set(maze.black) | set(maze.path) | set([maze.exit]) | set([maze.start])
+    new_filter_not_normalized = [[0 for _ in range(len(filter_))] for _ in range(len(filter_))]
+    for i in range(len(filter_)):
+        for j in range(len(filter_)):
+            if (i, j) in non_walls:
+                new_filter_not_normalized[i][j] = filter_[i][j]
+    new_filter = [[0 for _ in range(len(filter_))] for _ in range(len(filter_))]
+    new_sum = sum([sum(row) for row in new_filter_not_normalized])
+    for i in range(len(filter_)):
+        for j in range(len(filter_)):
+            new_filter[i][j] = new_filter_not_normalized[i][j] / new_sum
+    return new_filter
+
+
+def apply_filter(matrix, filter_, position):
+    """
+    Apply a filter to a matrix, centered at a given position.
+    """
+    nrows = len(matrix)
+    ncols = len(matrix[0])
+    filter_nrows = len(filter_)
+    filter_ncols = len(filter_[0])
+    result = 0
+    for i in range(filter_nrows):
+        for j in range(filter_ncols):
+            row = position[0] + i - filter_nrows // 2
+            col = position[1] + j - filter_ncols // 2
+            if row < 0 or row >= nrows or col < 0 or col >= ncols:
+                continue
+            result += matrix[row][col] * filter_[i][j]
+    return result
 
 @memoize #Hopefully saves on time cost to compute?
-def blind_nodevalue_with_memory(mazes, index, discount_factor=1, bad_estimation_factor=1, memory_weight=.5, learning_rate=.5):
+def blind_nodevalue_with_memory(child_maze, prev_mazes, discount_factor=1, bad_estimation_factor=1, memory_weight=.5, learning_rate=.5):
     """
     Q_blind = blind nodevalue no memory
-    Q_seen = nodevalue based on past maps exits, no info about current map
+    Q_seen = matrix of nodevalues based on past maps exits, no info about current map
     Q_past = nodevalue based on past maps exits, and current map layout
     Q_mem = weighted average of Q_seen and Q_past
     """
-    Q_blind = blind_nodevalue_comb(mazes[index], discount_factor, bad_estimation_factor)
-    Q_seen = value_iteration(mazes[:index], learning_rate)
+    Q_blind = blind_nodevalue_comb(child_maze, discount_factor, bad_estimation_factor)
+    if len(prev_mazes) == 0:
+        return Q_blind
+    Q_seen = value_iteration(prev_mazes, learning_rate)
     
+    # 5x5 filter for now
+    # averages over 5x5 area with more weight on center
+    filter_ = [[.01, .02, .04, .02, .01],
+               [.02, .04, .08, .04, .02],
+               [.04, .08, .16, .08, .04],
+               [.02, .04, .08, .04, .02],
+               [.01, .02, .04, .02, .01]]
     
+    filter_ = get_non_wall_filter(child_maze, filter_)
+    Q_past = apply_filter(Q_seen, filter_, child_maze.pos)
+    Q_mem = memory_weight * Q_past + (1 - memory_weight) * Q_blind
+    return Q_mem    
   
+
 def generate_combinations(array):
     """
     For n different sub-arrays, find every way to draw one element from each array.
@@ -431,9 +522,10 @@ class DecisionModel:
                                         given our parent node.
         """
         result = []
-        for maze in mazes:
+        for i, maze in enumerate(mazes):
             probs_summary = {} # {node: {child_node: value, child_node: value, ...}}
             graph = graphs[maze.name]
+            prev_mazes = tuple(mazes[:i])
             
             for parent_node in graph: 
                 if parent: #If we request only one parent node, then don't bother with the rest of the graph
@@ -451,7 +543,7 @@ class DecisionModel:
                 for child_maze, path in children.items():
                     parent_to_child = len(path) #Distance to child
                     #Average value of this child: average distance to exit
-                    child_to_exit_all = self.raw_nodevalue_func(child_maze, *self.node_params) 
+                    child_to_exit_all = self.raw_nodevalue_func(child_maze, prev_mazes, *self.node_params) 
                     value = parent_to_child + child_to_exit_all
                     raw_values.append(value)
                 
@@ -588,6 +680,7 @@ class DecisionModelRange(DecisionModel):
 
 if __name__ == '__main__':
     Maze1 = mazes['1']
-    model = DecisionModel("basic")
-    vals = model.choice_probs([Maze1])
+    node_params = (1, 1, .5, .5)
+    model = DecisionModel("memory", node_params=node_params, raw_nodevalue_func=blind_nodevalue_with_memory)
+    vals = model.choice_probs([Maze1, Maze1])
     print(vals)
