@@ -9,7 +9,7 @@ import random
 from maze import Maze, maze2tree_defunct, grid2maze
 from test_mazes import graphs, mazes
 #Models of human decision-making
-from decisionmodel import DecisionModel, DecisionModelRange, raw_nodevalue_comb, softmax
+from decisionmodel import DecisionModel, DecisionModelRange, blind_nodevalue_comb, softmax
 #Converting data into our desired formats.
 from data_parser import directions, decisions_to_subject_decisions
 
@@ -197,7 +197,7 @@ eu_du_pwu = [expected_utility_model, discounted_utility_model, probability_weigh
 
 eu_model_class = DecisionModelRange(model_name= 'Expected_Utility',
                                     evaluation_function = avg_log_likelihood_decisions,
-                                    raw_nodevalue_func = raw_nodevalue_comb,
+                                    raw_nodevalue_func = blind_nodevalue_comb,
                                     parent_nodeprob_func = softmax,
                                     node_params_ranges   = ((0,1,10), (0,1,10)),
                                     parent_params_ranges = ((0,1,10),)

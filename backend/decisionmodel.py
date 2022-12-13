@@ -197,7 +197,7 @@ def compute_exit_distance(revealed, child_pos):
     return np.mean(dists_to_exit ) #Average out each exit
 
 @memoize #Hopefully saves on time cost to compute?
-def raw_nodevalue_comb(maze, gamma=1, beta=1):
+def blind_nodevalue_comb(maze, gamma=1, beta=1):
     """
     Get value of this node (this path through our maze), 
     according to our parameters, before applying softmax and thus tau.
@@ -252,7 +252,6 @@ def raw_nodevalue_comb(maze, gamma=1, beta=1):
     children = graph[parent_node]["children"]
     
     for child_maze, path_to_child in children.items():
-        child_node   = child_maze 
         child_hidden = child_maze.get_hidden()
         
         ###Here, we get the probability of finding an exit at this node
@@ -269,7 +268,7 @@ def raw_nodevalue_comb(maze, gamma=1, beta=1):
         child_to_exit = compute_exit_distance(revealed, child_pos)
         
         ###Average distance to exit: assuming exit is not at the child node, and is instead later.
-        child_to_exit_later = raw_nodevalue_comb(child_maze, gamma, beta)
+        child_to_exit_later = blind_nodevalue_comb(child_maze, gamma, beta)
         
         #No matter what, we will get this loss: we have to walk to the child to find out whether we win.
         necessary_loss = parent_to_child
@@ -280,18 +279,40 @@ def raw_nodevalue_comb(maze, gamma=1, beta=1):
         
         #Expected loss: each loss has been scaled by its probability of occurring
         child_loss = necessary_loss + success_loss + failure_loss
-        child_losses[child_node] = child_loss #All losses
+        child_losses[child_maze] = child_loss #All losses
     
     if children == {}:
         return 0
     
     #We pick the child that incurs the least loss
-    true_loss = min(child_losses.values())
-    
+    true_loss = min(child_losses.values())  
     
     return true_loss
 
+@memoize
+def value_iteration(prev_mazes, learning_rate=.5):
+    """
+    For each maze, calculate the value of each node based on the position of the exit.
+    Calculated as min distance to exit from each node.
+    Essentially "seen_nodevalue_comb"
+    """
+    # prev_values = value_iteration(prev_mazes[:-1], learning_rate) if len(prev_mazes) > 1 else {}
+    pass
+    
+    
 
+@memoize #Hopefully saves on time cost to compute?
+def blind_nodevalue_with_memory(mazes, index, discount_factor=1, bad_estimation_factor=1, memory_weight=.5, learning_rate=.5):
+    """
+    Q_blind = blind nodevalue no memory
+    Q_seen = nodevalue based on past maps exits, no info about current map
+    Q_past = nodevalue based on past maps exits, and current map layout
+    Q_mem = weighted average of Q_seen and Q_past
+    """
+    Q_blind = blind_nodevalue_comb(mazes[index], discount_factor, bad_estimation_factor)
+    Q_seen = value_iteration(mazes[:index], learning_rate)
+    
+    
   
 def generate_combinations(array):
     """
@@ -332,7 +353,7 @@ class DecisionModel:
     
     def __init__(self, model_name, 
                  node_params=(1,1), parent_params=(1,), 
-                 raw_nodevalue_func=raw_nodevalue_comb, parent_nodeprob_func=softmax):
+                 raw_nodevalue_func=blind_nodevalue_comb, parent_nodeprob_func=softmax):
         
         """
         model_name: str
@@ -381,14 +402,13 @@ class DecisionModel:
             self.parent_params = parent_params
             
     
-    def choice_probs(self, maze, parent=False):
+    def choice_probs(self, mazes, parent=False):
         """
         Returns the probability of every choice we could make in the graph.
 
         Parameters
         ----------
         maze : Maze object, our maze to navigate. Stores a maze.map object:
-            
             map: tuple of tuples of ints - represents a grid in the shape (maze.nrows, maze.ncols)
                    -tuple of tuples    has length = nrows, 
                    -each tuple of ints has length = ncols.
@@ -410,34 +430,36 @@ class DecisionModel:
                                   val - the probability of our model choosing that child node,
                                         given our parent node.
         """
-        probs_summary = {} # {node: {child_node: value, child_node: value, ...}}
-        graph = graphs[maze.name]
-        
-        for parent_node in graph: 
-            if parent: #If we request only one parent node, then don't bother with the rest of the graph
-                if parent_node!=maze:
-                    continue
+        result = []
+        for maze in mazes:
+            probs_summary = {} # {node: {child_node: value, child_node: value, ...}}
+            graph = graphs[maze.name]
+            
+            for parent_node in graph: 
+                if parent: #If we request only one parent node, then don't bother with the rest of the graph
+                    if parent_node!=maze:
+                        continue
 
-            children = graph[parent_node]['children']
-            
-            #Inner dictionary
-            probs_summary[parent_node] = {}
-            raw_values = []
-            
-            ###Note: this way of doing the loss is still a little weird
-            ###There's also some repeat logic from the other function: maybe we can do something about that?
-            for child_maze, path in children.items():
-                parent_to_child = len(path) #Distance to child
-                #Average value of this child: average distance to exit
-                child_to_exit_all = self.raw_nodevalue_func(child_maze, *self.node_params) 
-                value = parent_to_child + child_to_exit_all
-                raw_values.append(value)
-            
-            #Apply whatever function you want to these raw values
-            probs = self.parent_nodeprob_func(raw_values, *self.parent_params) 
-            probs_summary[parent_node] = {child_node: prob for child_node,prob in zip(children, probs)}
-
-        return probs_summary
+                children = graph[parent_node]['children']
+                
+                #Inner dictionary
+                probs_summary[parent_node] = {}
+                raw_values = []
+                
+                ###Note: this way of doing the loss is still a little weird
+                ###There's also some repeat logic from the other function: maybe we can do something about that?
+                for child_maze, path in children.items():
+                    parent_to_child = len(path) #Distance to child
+                    #Average value of this child: average distance to exit
+                    child_to_exit_all = self.raw_nodevalue_func(child_maze, *self.node_params) 
+                    value = parent_to_child + child_to_exit_all
+                    raw_values.append(value)
+                
+                #Apply whatever function you want to these raw values
+                probs = self.parent_nodeprob_func(raw_values, *self.parent_params) 
+                probs_summary[parent_node] = {child_node: prob for child_node,prob in zip(children, probs)}
+            result.append(probs_summary)
+        return result
     
 
 
@@ -448,9 +470,9 @@ class DecisionModelRange(DecisionModel):
     
     def __init__(self, model_name, 
                  node_params_ranges, parent_params_ranges, evaluation_function,
-                 raw_nodevalue_func=raw_nodevalue_comb, parent_nodeprob_func=softmax,):
+                 raw_nodevalue_func=blind_nodevalue_comb, parent_nodeprob_func=softmax,):
         
-        super().__init__(self, model_name, raw_nodevalue_func=raw_nodevalue_comb, parent_nodeprob_func=softmax)
+        super().__init__(self, model_name, raw_nodevalue_func=blind_nodevalue_comb, parent_nodeprob_func=softmax)
         #Preserve usual DecisionModel stuff
         
         
@@ -565,6 +587,7 @@ class DecisionModelRange(DecisionModel):
             
 
 if __name__ == '__main__':
-    Maze1= mazes['1']
+    Maze1 = mazes['1']
     model = DecisionModel("basic")
-    vals = model.choice_probs(Maze1)
+    vals = model.choice_probs([Maze1])
+    print(vals)
