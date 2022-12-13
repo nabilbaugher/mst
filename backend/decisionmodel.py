@@ -381,7 +381,7 @@ class DecisionModel:
             self.parent_params = parent_params
             
     
-    def choice_probs(self, maze, parent=None):
+    def choice_probs(self, maze, parent=False):
         """
         Returns the probability of every choice we could make in the graph.
 
@@ -395,8 +395,8 @@ class DecisionModel:
                    
                    Our "maze" the player is moving through.
 
-        parent : int, optional
-            If given this parameter, only find the node values which are the children of this node.
+        parent : boolean, optional
+            If given this parameter, only find the choice probs which are the children of this node.
             This can be used to compare different choices.
 
         Returns
@@ -414,11 +414,11 @@ class DecisionModel:
         graph = graphs[maze.name]
         
         for parent_node in graph: 
+            if parent: #If we request only one parent node, then don't bother with the rest of the graph
+                if parent_node!=maze:
+                    continue
+
             children = graph[parent_node]['children']
-            
-            # If node doesn't allow a choice, ignore it.
-            if len(children) <= 1:
-                continue
             
             #Inner dictionary
             probs_summary[parent_node] = {}

@@ -7,10 +7,11 @@ import random
 
 #Maze representation
 from maze import Maze, maze2tree_defunct, grid2maze
+from test_mazes import graphs, mazes
 #Models of human decision-making
 from decisionmodel import DecisionModel, DecisionModelRange, raw_nodevalue_comb, softmax
 #Converting data into our desired formats.
-from data_parser import directions, mazes, trees, decisions_to_subject_decisions
+from data_parser import directions, decisions_to_subject_decisions
 
 pp = pprint.PrettyPrinter(compact=False, width=90)
 
@@ -61,11 +62,11 @@ def avg_log_likelihood_decisions(decisions_list,  model ):
 
     Parameters
     ----------
-    decisions_list : list of tuples (str, int)
-        Each tuple represents one decision our player made, on one map: (map_, node)
+    decisions_list : list of tuples (Maze, Maze)
+        Each tuple represents one decision our player made, moving between two nodes: (parent_maze, child_maze)
         To reach this node, our player has to have gone from its parent node, and chosen this option.
         
-        Thus, this list in total represents every decision our player made.
+        This list in total represents every decision our player made.
         
     model : DecisionModel object, representing one model for player-decisions. 
         Contains variables-
@@ -99,27 +100,17 @@ def avg_log_likelihood_decisions(decisions_list,  model ):
 
     cum_loglike = 0
 
-    for maze, node in decisions_list: #Every decision this subject has made
+    for parent_node, child_node in decisions_list: #Every decision this subject has made
         
-        tree = maze2tree_defunct(maze) #Create a tree for this current map
-        
-        parent = tree[node]['pid'] #Get parent of our current node
+        graph = graphs[parent_node.name] #Graph for this node
 
-        #Root node: no decision was made, can move on
-        if parent == 'NA':
-            continue
-
-        choices = tree[parent]['children'] #All choices we could have made at the last step
+        choices = graph[parent_node]['children'] #All choices we could have made at the last step
         
-        #If our parent had only one choice, then no decision was made: p=1, log(p)=0
-        if len(choices) <= 1:
-            continue
+        #Get the probability for each choice the parent node had
+        choices = model.choice_probs(parent_node)[parent_node]
         
-        #Get the node value for each choice the parent node had
-        choices = model.node_values(maze, parent=parent)[parent]
-        
-        #We only chose the current node
-        cum_loglike += np.log( choices[node] ) 
+        #We only chose the current child node
+        cum_loglike += np.log( choices[child_node] ) 
     
     avg_loglike = cum_loglike / len(decisions_list)
     
@@ -268,13 +259,17 @@ def model_preference(model_classes, decisions, k=4):
     return model_preference
 
 
-eu_model_class = DecisionModelRange(model_name= 'Expected_Utility',
-                                    evaluation_function = avg_log_likelihood_decisions,
-                                    raw_nodevalue_func = raw_nodevalue_comb,
-                                    parent_nodeprob_func = softmax,
-                                    node_params_ranges   = ((0,1,10), (0,1,10)),
-                                    parent_params_ranges = ((0,1,10),)
-                                    )
+# eu_model_class = DecisionModelRange(model_name= 'Expected_Utility',
+#                                     evaluation_function = avg_log_likelihood_decisions,
+#                                     raw_nodevalue_func = raw_nodevalue_comb,
+#                                     parent_nodeprob_func = softmax,
+#                                     node_params_ranges   = ((0,1,10), (0,1,10)),
+#                                     parent_params_ranges = ((0,1,10),)
+#                                     )
+
+if __name__ == '__main__':
+    pass
+    
 
     
     

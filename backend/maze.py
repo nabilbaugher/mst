@@ -127,7 +127,7 @@ class Maze:
         else:
             string+='Unnamed'
             
-        string+=" : position "+str(self.pos)
+        string+="_position_"+str(self.pos)
         
         return string
     
@@ -149,7 +149,7 @@ class Maze:
         A maze is uniquely identified by its map, and your current position.
         """
         
-        if ( type(self) != type(other) ):
+        if str(type(self)) != str(type(other)):
             return False
         
         return self.map == other.map and self.pos == other.pos
