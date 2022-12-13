@@ -97,13 +97,9 @@ def avg_log_likelihood_decisions(decisions_list,  model ):
         The average log likelihood of this set of decision, given our model and parameters.
 
     """
-
     cum_loglike = 0
-
     for parent_node, child_node in decisions_list: #Every decision this subject has made
-        
         graph = graphs[parent_node.name] #Graph for this node
-
         choices = graph[parent_node]['children'] #All choices we could have made at the last step
         
         #Get the probability for each choice the parent node had
@@ -113,8 +109,7 @@ def avg_log_likelihood_decisions(decisions_list,  model ):
         cum_loglike += np.log( choices[child_node] ) 
     
     avg_loglike = cum_loglike / len(decisions_list)
-    
-    return avg_loglike #Average out the results
+    return avg_loglike
 
 
 
@@ -153,15 +148,7 @@ def split_train_test_kfold(decisions_list, k=4):
     for i in range(k): #For each chunk, make a dataset where that chunk is testing, and the rest are training
         test = splits[i] #Main chunk
         train = sum([splits[j] for j in range(k) if j != i]) #Other chunks
-        
-
         yield train, test
-
-    
-
-
-
-
 
     
 def split_train_test_rand(decisions_list, k=4):
@@ -193,7 +180,6 @@ def split_train_test_rand(decisions_list, k=4):
     for _ in range(k):
         test = random.sample(decisions_list, k=len(decisions_list) // k)
         train = [d for d in decisions_list if d not in test]
-
         yield train, test
 
 
@@ -233,18 +219,14 @@ def model_preference(model_classes, decisions, k=4):
     """
 
     model_preference = {}  # {model_name: number of subjects that prefer this model}
-    
     subject_decisions = decisions_to_subject_decisions(decisions)
     
     for subject in decisions:
         decisions_list = subject_decisions[subject]
-        
         models = {}
         
-        for model_class in model_classes:
-            
+        for model_class in model_classes:    
             for train, test in split_train_test_rand(decisions_list, k): #Break up data into chunks
-            
                 model = model_class.fit_parameters(train) #Get best model
                 evaluation = avg_log_likelihood_decisions(test, model)
                 
