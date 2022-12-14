@@ -241,16 +241,12 @@ def blind_nodevalue_comb(maze, prev_mazes=None, gamma=1, beta=1):
         
     graph = graphs[maze.name]
     
-    #Data about parent
     parent_node = maze
     parent_hidden = maze.get_hidden()
     
-    #Values for each child we could choose
-    child_losses = {}
-    
-    #All children
-    children = graph[parent_node]["children"]
-    
+    child_losses = {} # Values for each child we could choose
+    children = graph[parent_node]["children"] # All children
+
     for child_maze, path_to_child in children.items():
         child_hidden = child_maze.get_hidden()
         
@@ -262,20 +258,15 @@ def blind_nodevalue_comb(maze, prev_mazes=None, gamma=1, beta=1):
         
         ###Average distance to exit: assuming the exit is at the child node
         revealed = set(parent_hidden) - set(child_hidden)
-        
         child_pos = child_maze.pos
-        
         child_to_exit = compute_exit_distance(revealed, child_pos)
         
         ###Average distance to exit: assuming exit is not at the child node, and is instead later.
         child_to_exit_later = blind_nodevalue_comb(child_maze, gamma, beta)
         
-        #No matter what, we will get this loss: we have to walk to the child to find out whether we win.
-        necessary_loss = parent_to_child
-        #Loss assuming we find the exit
-        success_loss = weighted_prob * child_to_exit
-        #Loss assuming we don't find the exit at this child node
-        failure_loss = gamma * weighted_comp *  child_to_exit_later
+        necessary_loss = parent_to_child # No matter what, we will get this loss: we have to walk to the child to find out whether we win.
+        success_loss = weighted_prob * child_to_exit # Loss assuming we find the exit
+        failure_loss = gamma * weighted_comp *  child_to_exit_later # Loss assuming we don't find the exit at this child node
         
         #Expected loss: each loss has been scaled by its probability of occurring
         child_loss = necessary_loss + success_loss + failure_loss
@@ -284,9 +275,7 @@ def blind_nodevalue_comb(maze, prev_mazes=None, gamma=1, beta=1):
     if children == {}:
         return 0
     
-    #We pick the child that incurs the least loss
-    true_loss = min(child_losses.values())  
-    
+    true_loss = min(child_losses.values()) # We pick the child that incurs the least loss
     return true_loss
 
 
@@ -397,6 +386,8 @@ def blind_nodevalue_with_memory(child_maze, prev_mazes, discount_factor=1, bad_e
     Q_blind = blind_nodevalue_comb(child_maze, discount_factor, bad_estimation_factor)
     if len(prev_mazes) == 0:
         return Q_blind
+    if Q_blind == 0:
+        return Q_blind
     Q_seen = value_iteration(prev_mazes, learning_rate)
     
     # 5x5 filter for now
@@ -408,7 +399,7 @@ def blind_nodevalue_with_memory(child_maze, prev_mazes, discount_factor=1, bad_e
                [.01, .02, .04, .02, .01]]
     
     Q_past = apply_filter(Q_seen, filter_, child_maze.pos)
-        
+    
     Q_mem = memory_weight * Q_past + (1 - memory_weight) * Q_blind
     return Q_mem    
   
@@ -555,6 +546,10 @@ class DecisionModel:
                 probs = self.parent_nodeprob_func(raw_values, *self.parent_params) 
                 probs_summary[parent_node] = {child_node: prob for child_node,prob in zip(children, probs)}
             result.append(probs_summary)
+            # testing
+            for pre_choice in probs_summary:
+                if maze.map[pre_choice.pos[0]][pre_choice.pos[1]] == 3:
+                    print("Error: we're in a wall")
         return result
     
 

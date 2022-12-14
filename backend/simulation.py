@@ -101,6 +101,7 @@ def visualize_juxtaposed_best_paths(mazes, models, index):
     """
     current_maze = mazes[str(index)]
     prev_mazes = [mazes[str(i)] for i in range(index)]
+    
     if type(current_maze)==tuple: # Convert to desired format
         current_maze=Maze(current_maze)
         
@@ -108,7 +109,7 @@ def visualize_juxtaposed_best_paths(mazes, models, index):
     _, axs = plt.subplots(1, len(models))
     axs = axs.flat
     
-    mazes = [current_maze] + prev_mazes
+    mazes = prev_mazes + [current_maze]
 
     # Each value function gets draw on its own map
     for ax, model in zip(axs, models):
@@ -124,5 +125,5 @@ if __name__ == "__main__":
     # Test the visualization
     memory_model = DecisionModel("memory", node_params=(1, 1, .5, .5), raw_nodevalue_func=blind_nodevalue_with_memory)
     forget_model = DecisionModel("non memory", node_params=(1, 1), raw_nodevalue_func=blind_nodevalue_comb)
-    for i in range(5):
+    for i in range(15):
         visualize_juxtaposed_best_paths(mazes, [memory_model, forget_model], i)
