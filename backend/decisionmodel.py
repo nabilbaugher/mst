@@ -501,7 +501,7 @@ class DecisionModel:
             self.parent_params = parent_params
             
     
-    def choice_probs(self, mazes, parent=False):
+    def choice_probs(self, mazes):
         """
         Returns the probability of every choice we could make in the graph.
 
@@ -536,10 +536,6 @@ class DecisionModel:
             prev_mazes = tuple(mazes[:i])
             
             for parent_node in graph: 
-                if parent: #If we request only one parent node, then don't bother with the rest of the graph
-                    if parent_node!=maze:
-                        continue
-
                 children = graph[parent_node]['children']
                 
                 #Inner dictionary
