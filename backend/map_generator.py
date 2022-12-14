@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from maze import map_builder, map_visualizer, maze2tree_defunct
 
 #Visualize_maze works fine with map
-from simulation import visualize_maze, visualize_juxtaposed_best_paths
+from simulation_old import visualize_maze, visualize_juxtaposed_best_paths
 import numpy as np
 import copy
 import random
