@@ -548,7 +548,7 @@ class Maze:
                     
         return paths
     
-    def visualize(self, pos=None, node=None):
+    def visualize(self, pos=None, path=None):
         """
         Turns a map representation into a human-interpretable image.
 
@@ -589,55 +589,31 @@ class Maze:
         ax = fig.add_subplot(111 ,aspect='equal')
         
         curr_map = self
-        
-        
-        
-        ###This functionality is defunct, unless we adjust for it to work with maze2statetree instead
-        
-        # if node: #If given a node, we've chosen a partial path.
-        #           #Draw that path!
-            
-        #     tree = maze2tree(self) #Get tree to get nodes
-            
-        #     #Make sure that this node is valid!
-        #     try:
-        #         path = tree[node]['path_from_root']
-        #     except:
-        #         raise ValueError(f"The node value {node} is not in range: this node does not exist!")
 
-        #     #Get the map matching this node
-        #     curr_map = tree[node]['map']
-        #     curr_pos = tree[node]['pos']
-        #     prev_pos = path[-1]
+        if path: #If given a node, we've chosen a partial path.
+
             
-        #     #Update map based on our last step
-        #     curr_map = curr_map.update_map(curr_pos, prev_pos)
+            #row --> y axis, col --> x axis
+            #Thus, to do (x,y), we need tuples of the form (c,r)
+            path = [(c ,r) for r ,c in path][::-1]
+            #Also reversing order of path
             
-        #     #row --> y axis, col --> x axis
-        #     #Thus, to do (x,y), we need tuples of the form (c,r)
-        #     path = [(c ,r) for r ,c in path][::-1]
-        #     #Also reversing order of path
-            
-        #     #Convert pairs of elements (x,y) into two lists: X and Y
-        #     X, Y = zip(*[ (x + 0.5, self.nrows - y - 0.5)   for x ,y in path])
-        #     #Offset (+0.5, -0.5) is so that our dots are centered on each tile
+            #Convert pairs of elements (x,y) into two lists: X and Y
+            X, Y = zip(*[ (x + 0.5, self.nrows - y - 0.5)   for x ,y in path])
+            #Offset (+0.5, -0.5) is so that our dots are centered on each tile
             
             
-        #     ###Plotting our path
+            ###Plotting our path
             
-        #     #Draw dotted line between each tile on path
-        #     ax.plot(X, Y, 'o--',  markersize=4, label=node)
+            #Draw dotted line between each tile on path
+            ax.plot(X, Y, 'o--',  markersize=4)
             
-        #     #Color our starting point (X[-1],Y[-1]) as purple
-        #     ax.plot(X[-1], Y[-1], 's', markersize=8, color='purple')
+            #Color our starting point (X[-1],Y[-1]) as purple
+            ax.plot(X[-1], Y[-1], 's', markersize=8, color='purple')
 
         
         #Convert string numbers into int numbers
-        curr_map = [[int(cell) for cell in row] for row in curr_map][::-1]
-        #Convert tuples into lists so we can index
-        
-        #Old version: not sure why they made it more complicated??
-        #curr_map = [[int(cell) for cell in list(row)[:ncols]] for row in curr_map][::-1]
+        curr_map = curr_map[::-1]
 
         #Gather color map
         cmap = colors.ListedColormap \
@@ -875,4 +851,6 @@ def grid2maze(map_):
                 start=(r,c)
                 
     return Maze(nrows, ncols, black, path, start, exit_)
+
+    
             
