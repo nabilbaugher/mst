@@ -1,4 +1,4 @@
-
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
@@ -342,15 +342,20 @@ def value_iteration(prev_mazes, learning_rate=.5):
     return result
 
 
-def get_non_wall_filter(maze, filter_):
+def get_non_wall_filter(matrix, filter_, position):
     """
     returns a filter that has zero values for all positions that are walls and all values add to 1.
     """
-    non_walls = set(maze.black) | set(maze.path) | set([maze.exit]) | set([maze.start])
+    nrows = len(matrix)
+    ncols = len(matrix[0])
     new_filter_not_normalized = [[0 for _ in range(len(filter_))] for _ in range(len(filter_))]
     for i in range(len(filter_)):
         for j in range(len(filter_)):
-            if (i, j) in non_walls:
+            row = position[0] - len(filter_) // 2 + i
+            col = position[1] - len(filter_) // 2 + j
+            if row < 0 or row >= nrows or col < 0 or col >= ncols:
+                continue
+            if matrix[row][col] != float('inf'):
                 new_filter_not_normalized[i][j] = filter_[i][j]
     new_filter = [[0 for _ in range(len(filter_))] for _ in range(len(filter_))]
     new_sum = sum([sum(row) for row in new_filter_not_normalized])
@@ -364,6 +369,7 @@ def apply_filter(matrix, filter_, position):
     """
     Apply a filter to a matrix, centered at a given position.
     """
+    filter_ = get_non_wall_filter(matrix, filter_, position)
     nrows = len(matrix)
     ncols = len(matrix[0])
     filter_nrows = len(filter_)
@@ -374,6 +380,8 @@ def apply_filter(matrix, filter_, position):
             row = position[0] + i - filter_nrows // 2
             col = position[1] + j - filter_ncols // 2
             if row < 0 or row >= nrows or col < 0 or col >= ncols:
+                continue
+            if matrix[row][col] == float('inf'):
                 continue
             result += matrix[row][col] * filter_[i][j]
     return result
@@ -399,8 +407,8 @@ def blind_nodevalue_with_memory(child_maze, prev_mazes, discount_factor=1, bad_e
                [.02, .04, .08, .04, .02],
                [.01, .02, .04, .02, .01]]
     
-    filter_ = get_non_wall_filter(child_maze, filter_)
     Q_past = apply_filter(Q_seen, filter_, child_maze.pos)
+        
     Q_mem = memory_weight * Q_past + (1 - memory_weight) * Q_blind
     return Q_mem    
   
