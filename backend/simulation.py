@@ -50,6 +50,9 @@ def best_paths(mazes, model):
         
         while True:
             cur = path[-1]
+            
+            option = probs_sumam
+            
             if cur == maze.end:
                 break
             next_node = max(probs_summary[cur], key=lambda next_node: probs_summary[cur][next_node])
