@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.colors as colors
 
 from maze import Maze, maze2graph, grid2maze
-from decisionmodel import DecisionModel
+from decisionmodel import DecisionModel, blind_nodevalue_with_memory, blind_nodevalue_comb
 from test_mazes import mazes, graphs
 
 """
@@ -43,25 +43,23 @@ def best_paths(mazes, model):
     Get the best path for each of the mazes in order based on the model
     """
     result = []
-    for maze in mazes:
-        graph = graphs[maze.name]
-        probs_summary = model.choice_probs(graph)
-        path = [maze.start]
+    probs_summary = model.choice_probs(mazes)
+    for i, maze in enumerate(mazes):
+        path = [maze]
+        probs_for_maze = probs_summary[i]
         
         while True:
             cur = path[-1]
-            
-            option = probs_sumam
-            
-            if cur == maze.end:
+            if not cur.exit: # exit can be seen
                 break
-            next_node = max(probs_summary[cur], key=lambda next_node: probs_summary[cur][next_node])
+            next_node = max(probs_for_maze[cur], key=lambda next_node: probs_for_maze[cur][next_node])
             path.append(next_node)
-        result.append(path)
+        result.append([node.pos for node in path])
+        
     return result
 
 
-def visualize_juxtaposed_best_paths(maze, models= eu_du_pwu):
+def visualize_juxtaposed_best_paths(mazes, models, index):
     """
     This function allows us to visually compare the "best paths" chosen by multiple different
     value functions.
@@ -101,20 +99,30 @@ def visualize_juxtaposed_best_paths(maze, models= eu_du_pwu):
     -------
     None.
     """
-    if type(maze)==tuple: # Convert to desired format
-        maze=Maze(maze)
+    current_maze = mazes[str(index)]
+    prev_mazes = [mazes[str(i)] for i in range(index)]
+    if type(current_maze)==tuple: # Convert to desired format
+        current_maze=Maze(current_maze)
         
-    num_funcs = len(models)
     # Empty plot to draw on
-    _, axs = plt.subplots(1, num_funcs)
+    _, axs = plt.subplots(1, len(models))
     axs = axs.flat
+    
+    mazes = [current_maze] + prev_mazes
 
     # Each value function gets draw on its own map
     for ax, model in zip(axs, models):
-        path = best_paths(maze, model) # Get the best path
-        visualize_maze(maze, ax) # Draw the maze
-        visualize_path(maze, path, ax) # Draw the path on the maze
+        paths = best_paths(mazes, model) # Get the best path
+        path_for_current_maze = paths[index]
+        current_maze.visualize(ax=ax, path=path_for_current_maze) # Draw the maze
         model_name = model.model_name # Label the maze
         ax.set_title(model_name)
-
     plt.show()
+    
+
+if __name__ == "__main__":
+    # Test the visualization
+    memory_model = DecisionModel("memory", node_params=(1, 1, .5, .5), raw_nodevalue_func=blind_nodevalue_with_memory)
+    forget_model = DecisionModel("non memory", node_params=(1, 1), raw_nodevalue_func=blind_nodevalue_comb)
+    for i in range(5):
+        visualize_juxtaposed_best_paths(mazes, [memory_model, forget_model], i)

@@ -197,7 +197,7 @@ def compute_exit_distance(revealed, child_pos):
     return np.mean(dists_to_exit ) #Average out each exit
 
 @memoize #Hopefully saves on time cost to compute?
-def blind_nodevalue_comb(maze, gamma=1, beta=1):
+def blind_nodevalue_comb(maze, prev_mazes=None, gamma=1, beta=1):
     """
     Get value of this node (this path through our maze), 
     according to our parameters, before applying softmax and thus tau.
@@ -518,7 +518,7 @@ class DecisionModel:
             If given this parameter, only find the choice probs which are the children of this node.
             This can be used to compare different choices.
 
-        Returns
+        Returns list of dicts of dicts
         -------
         probs_summary : 
             Dictionary of dictionaries

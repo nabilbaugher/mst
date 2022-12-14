@@ -532,6 +532,7 @@ class Maze:
                 new_pos = self.move(curr_pos,shift)
     
                 # If in path: don't want to backtrack
+                
                 if new_pos in path: #Don't include this direction!
                     continue
                 
@@ -548,7 +549,7 @@ class Maze:
                     
         return paths
     
-    def visualize(self, pos=None, path=None):
+    def visualize(self, ax=None, pos=None, path=None):
         """
         Turns a map representation into a human-interpretable image.
 
@@ -585,8 +586,11 @@ class Maze:
         """
         
         #Using matplotlib.pyplot printing
-        fig = plt.figure()
-        ax = fig.add_subplot(111 ,aspect='equal')
+        should_show = False
+        if not ax:
+            fig = plt.figure()
+            ax = fig.add_subplot(111 ,aspect='equal')
+            should_show = True
         
         curr_map = self
 
@@ -639,8 +643,9 @@ class Maze:
             (r,c)=pos
             
             ax.plot(c+.5, self.nrows-r-.5, 'bo', markersize=10)
-            
-        plt.show()
+        
+        if should_show:
+            plt.show()
 
 ###Used so we don't have to re-calculate the same tree multiple times
 def memoize(function):
