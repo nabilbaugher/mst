@@ -121,7 +121,7 @@ def convert_subject(datapoint):
     Interprets data for one subject in one play session. Converts it into the format we need: 
     converts keystrokes into a path through the map, along with the corresponding nodes we pass through.
     
-
+    
     Parameters
     ----------
     datapoint : dictionary
@@ -265,19 +265,18 @@ if __name__ == "__main__":
     
     Maze1 = mazes['1']
     
-    m = decisions['186b56d0-7a55-11ed-8ae6-13edafb97173']
+    # m = decisions['02a063a0-768f-11ed-9574-33a31f13e24c']
     
-    n = m['1']
+    # n = m['1']
     
-    ex_decisions = subject_decisions['186b56d0-7a55-11ed-8ae6-13edafb97173']
+    # ex_decisions = subject_decisions['02a063a0-768f-11ed-9574-33a31f13e24c']
     
+    # maze = Maze1
     
-    maze = Maze1
-    
-    for s in n['path']:
-        maze = maze.update_map(pos=s)
-        print(s)
-        if s in n['node_changes']:
-            print("Bazinga uwu") #New node!
+    # for s in n['path']:
+    #     maze = maze.update_map(pos=s)
+    #     print(s)
+    #     if s in n['node_changes']:
+    #         print("Bazinga uwu") #New node!
         
-        maze.visualize(s)
+    #     maze.visualize(s)

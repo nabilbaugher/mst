@@ -196,6 +196,7 @@ def compute_exit_distance(revealed, child_pos):
     
     return np.mean(dists_to_exit ) #Average out each exit
 
+
 @memoize #Hopefully saves on time cost to compute?
 def blind_nodevalue_comb(maze, prev_mazes=None, gamma=1, beta=1):
     """

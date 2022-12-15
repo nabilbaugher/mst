@@ -455,7 +455,7 @@ class GridSystem {
         // Input for person to input their MTurk worker id
         var worker_id_input = document.createElement("input");
         worker_id_input.type = "text";
-        worker_id_input.placeholder = "Worker ID";
+        worker_id_input.placeholder = "ID";
         worker_id_input.className = "worker_id_input";
         worker_id_input.id = "worker_id_input";
         worker_id_input.style.position = 'absolute';
@@ -511,7 +511,7 @@ class GridSystem {
 
         // Show text
         const para = document.createElement("p");
-        const thank_you_string = "Thank you for completing this survey! Please enter your Worker ID below to ensure compensation for this task. You can find this on your MTurk Dashboard or in the upper left corner of the Worker website.";
+        const thank_you_string = "Thank you for completing this survey! Please enter your Prolific ID below to ensure compensation for this task. You can find this on your Prolific dashboard. The confirmation code for this survey is C1AO6VNW";
         para.textContent = thank_you_string;
         para.style.position = 'absolute';
         para.style.left = "10%";
@@ -548,7 +548,7 @@ class GridSystem {
 
         // Show text
         const para = document.createElement("p");
-        const thank_you_string = "Thank you!"
+        const thank_you_string = "Thank you! Your confirmation code is C1AO6VNW"
         para.textContent = thank_you_string;
         para.style.position = 'absolute';
         para.style.left = "10%";
@@ -595,7 +595,7 @@ class GridSystem {
 
 
         const para = document.createElement("p");
-        const instruction_string =  "Thank you for participating in our survey! You will be presented with 30 different types of mazes. Use the arrow keys → ← ↑ ↓ to move until you find the exit and win! The exit will be in a gray square, revealed to be maroon. (Try to avoid refreshing the page, mazes will reset) Current Trial: " + String(this.current_trial_number);
+        const instruction_string =  "Thank you for participating in our survey! You will be presented with 20 different types of mazes. Use the arrow keys on your keyboard → ← ↑ ↓ to move until you find the exit and win! The exit will be in a gray square, revealed to be maroon. (Try to avoid refreshing the page, mazes will reset) Current Trial: " + String(this.current_trial_number);
         para.textContent = instruction_string;
         para.id = "instruction_string";
         para.style.position = 'absolute';
@@ -1303,7 +1303,8 @@ const maze_29 = [
     [3, 3, 3, 3, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3],
 ];
 
+// , maze_20, maze_21, maze_22, maze_23, maze_24, maze_25, maze_26, maze_27, maze_28, maze_29
+
 const gridSystem = new GridSystem([maze_0, maze_1, maze_2, maze_3, maze_4, maze_5, maze_6, maze_7, maze_8, maze_9, maze_10,
-    maze_11, maze_12, maze_13, maze_14, maze_15, maze_16, maze_17, maze_18, maze_19, maze_20,
-    maze_21, maze_22, maze_23, maze_24, maze_25, maze_26, maze_27, maze_28, maze_29]);
+    maze_11, maze_12, maze_13, maze_14, maze_15, maze_16, maze_17, maze_18, maze_19]);
 gridSystem.render();

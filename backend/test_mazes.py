@@ -701,12 +701,13 @@ graphs = loadData("graphs")
 
 
 
-if __name__ == "__main__":
-    pass
+# if __name__ == "__main__":
+#     pass
         
-#     for i in range(30): 
+#     for j in range(0,30): 
+#         i=j+1
         
-#         mazes[str(i)] = grid2maze(maps.__dict__["maze_"+str(i)]) #Save data
+#         mazes[str(i)] = grid2maze(maps.__dict__["maze_"+str(j)]) #Save data
 #         mazes[str(i)].name = str(i)
 
 #         graphs[str(i)] = maze2graph(mazes[str(i)]) #Save more data
@@ -719,9 +720,9 @@ if __name__ == "__main__":
 # for i in range(1,10):
 #     mazes['map_'+str(i)] = grid2maze( maps.__dict__["map_"+str(i)] )
     
-    Maze2=mazes['2']
-    Maze2.visualize(pos=(3,2), path=[(1,1),(1,2),(2,2)])
-    # 
+    # Maze2=mazes['2']
+    # Maze2.visualize(pos=(3,2), path=[(1,1),(1,2),(2,2)])
+    # # 
 # tree = maze2statetree(Maze2)
 
 # for key in tree:
