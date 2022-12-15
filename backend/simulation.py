@@ -55,7 +55,8 @@ def best_paths(mazes, model):
             next_node = max(probs_for_maze[cur], key=lambda next_node: probs_for_maze[cur][next_node])
             path.append(next_node)
         result.append([node.pos for node in path])
-        
+    # if len(mazes) == 2:
+    #     print(result[1])
     return result
 
 
@@ -123,7 +124,7 @@ def visualize_juxtaposed_best_paths(mazes, models, index):
 
 if __name__ == "__main__":
     # Test the visualization
-    memory_model = DecisionModel("memory", node_params=(1, 1, .5, .5), raw_nodevalue_func=blind_nodevalue_with_memory)
+    memory_model = DecisionModel("memory", node_params=(1, 1, 0, 0), raw_nodevalue_func=blind_nodevalue_with_memory)
     forget_model = DecisionModel("non memory", node_params=(1, 1), raw_nodevalue_func=blind_nodevalue_comb)
-    for i in range(15):
+    for i in range(2):
         visualize_juxtaposed_best_paths(mazes, [memory_model, forget_model], i)

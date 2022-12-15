@@ -265,11 +265,11 @@ if __name__ == "__main__":
     
     Maze1 = mazes['1']
     
-    m = decisions['02a063a0-768f-11ed-9574-33a31f13e24c']
+    m = decisions['186b56d0-7a55-11ed-8ae6-13edafb97173']
     
     n = m['1']
     
-    ex_decisions = subject_decisions['02a063a0-768f-11ed-9574-33a31f13e24c']
+    ex_decisions = subject_decisions['186b56d0-7a55-11ed-8ae6-13edafb97173']
     
     
     maze = Maze1
