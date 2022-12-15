@@ -121,7 +121,7 @@ def convert_subject(datapoint):
     Interprets data for one subject in one play session. Converts it into the format we need: 
     converts keystrokes into a path through the map, along with the corresponding nodes we pass through.
     
-
+    
     Parameters
     ----------
     datapoint : dictionary

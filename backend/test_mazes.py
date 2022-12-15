@@ -694,28 +694,28 @@ def loadData(filename):
         db = pickle.load(dbfile)   
     return db
 
-# mazes = loadData("mazes")
-# graphs = loadData("graphs")
+mazes = loadData("mazes")
+graphs = loadData("graphs")
 
 
 
 
 
-if __name__ == "__main__":
-    pass
+# if __name__ == "__main__":
+#     pass
         
-    for j in range(0,30): 
-        i=j+1
+#     for j in range(0,30): 
+#         i=j+1
         
-        mazes[str(i)] = grid2maze(maps.__dict__["maze_"+str(j)]) #Save data
-        mazes[str(i)].name = str(i)
+#         mazes[str(i)] = grid2maze(maps.__dict__["maze_"+str(j)]) #Save data
+#         mazes[str(i)].name = str(i)
 
-        graphs[str(i)] = maze2graph(mazes[str(i)]) #Save more data
+#         graphs[str(i)] = maze2graph(mazes[str(i)]) #Save more data
 
-        print('done!',i, len(graphs[str(i)]))
+#         print('done!',i, len(graphs[str(i)]))
         
-    storeData(mazes,"mazes")
-    storeData(graphs,"graphs")
+#     storeData(mazes,"mazes")
+#     storeData(graphs,"graphs")
 
 # for i in range(1,10):
 #     mazes['map_'+str(i)] = grid2maze( maps.__dict__["map_"+str(i)] )
