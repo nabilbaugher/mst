@@ -45,20 +45,6 @@ import pandas as pd
 
 # Average human time, standard deviation
 
-trial_data = get_csv("./data/prolific_data_sorted_tester_id_created_at")
-
-decisions = convert_data(trial_data)
-    
-# subject_decisions = decisions_to_subject_decisions(decisions)
-
-tester_id = '0e9aebe0-7972-11ed-9421-5535258a0716'
-
-
-print("decisions")
-print(decisions)
-
-print("tester_id")
-print(decisions[tester_id]["1"])
 
 # Get lengths of each path
 
@@ -93,7 +79,23 @@ filter_data_redundant_trials('./data/prolific_data_sorted_tester_id_created_at.c
 
 
 
-def get_path_lengths_for_all_users():
+trial_data = get_csv("./data/prolific_data_filtered")
+
+decisions = convert_data(trial_data)
+    
+# subject_decisions = decisions_to_subject_decisions(decisions)
+
+tester_id = '0e9aebe0-7972-11ed-9421-5535258a0716'
+
+
+print("decisions")
+print(decisions)
+
+print("tester_id")
+print(decisions[tester_id]["1"])
+
+
+def get_path_lengths_for_all_users(converted_data):
     """ Given a dictionary given by convert_data(trial_data)
     Return the path length of all users for all mazes
 
@@ -110,6 +112,34 @@ def get_path_lengths_for_all_users():
 
         Key is tester_id, value is an array with all of the 30 path lengths
     """
+
+    path_lengths = {}
+
+    for tester_id in converted_data:
+        path_lengths[tester_id] = []
+        for maze_number in converted_data[tester_id]:
+            path_length = len(converted_data[tester_id][maze_number]['path'])
+            path_lengths[tester_id].append(path_length)
+
+    return path_lengths
+
+
+print("get path lengths")
+all_path_lengths = get_path_lengths_for_all_users(decisions)
+
+# Average path length per user
+
+def average(arr):
+    return sum(arr) / len(arr)
+
+average_path_length_per_user = []
+for tester_id in all_path_lengths:
+    average_path_length = average(all_path_lengths[tester_id])
+    average_path_length_per_user.append(average_path_length)
+
+print("average_path_length_per_user")
+print(average_path_length_per_user)
+
     
 
 
