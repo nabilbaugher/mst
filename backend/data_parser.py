@@ -265,19 +265,18 @@ if __name__ == "__main__":
     
     Maze1 = mazes['1']
     
-    m = decisions['02a063a0-768f-11ed-9574-33a31f13e24c']
+    # m = decisions['02a063a0-768f-11ed-9574-33a31f13e24c']
     
-    n = m['1']
+    # n = m['1']
     
-    ex_decisions = subject_decisions['02a063a0-768f-11ed-9574-33a31f13e24c']
+    # ex_decisions = subject_decisions['02a063a0-768f-11ed-9574-33a31f13e24c']
     
+    # maze = Maze1
     
-    maze = Maze1
-    
-    for s in n['path']:
-        maze = maze.update_map(pos=s)
-        print(s)
-        if s in n['node_changes']:
-            print("Bazinga uwu") #New node!
+    # for s in n['path']:
+    #     maze = maze.update_map(pos=s)
+    #     print(s)
+    #     if s in n['node_changes']:
+    #         print("Bazinga uwu") #New node!
         
-        maze.visualize(s)
+    #     maze.visualize(s)
