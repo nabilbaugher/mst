@@ -97,7 +97,7 @@ class DecisionModelRange(DecisionModel):
 # Code begins #
 ###############
 
-def softmax(values, tau):
+def softmax_complement(values, tau):
     """
     Applies the softmax function to our inputs. Tau allows us to emphasize or de-emphasize the
     difference between our values.
@@ -120,9 +120,9 @@ def softmax(values, tau):
     list
         Returns the output of a softmax over our values.
     """
-    numer = [np.exp(-v * ( 1 /tau)) for v in values]
+    numer = [np.exp(v * ( 1 /tau)) for v in values]
     denom = sum(numer)
-    return [ n /denom for n in numer]
+    return [ 1-n /denom for n in numer]
 
 
 # probability weighting function: convert probability p to weight
@@ -280,34 +280,43 @@ def blind_nodevalue_comb(maze, prev_mazes=None, gamma=1, beta=1):
     return true_loss
 
 
-def get_distances_to_exit(maze):
+def get_distances_to_exit_in_optimal_path(maze):
     """
-    Get the distance from each node to the exit.
+    Get the distance from each node in the optimal path to the exit.
     """
     nrows = maze.nrows
     ncols = maze.ncols
-    result = [[float('inf') for _ in range(nrows)] for _ in range(ncols)]
+    result = [[float('inf') for _ in range(ncols)] for _ in range(nrows)]
     result[maze.exit[0]][maze.exit[1]] = 0
     non_walls = set(maze.black) | set(maze.path) | set([maze.exit]) | set([maze.start])
     
     # bfs
-    q = deque()
-    q.append((maze.exit[0], maze.exit[1], 0))
-    visited = set()
+    q = deque() # (row, col, parent_row, parent_col, distance)
+    q.append((maze.exit[0], maze.exit[1], None, None, 0))
+    parents = {}
     while q:
-        row, col, distance = q.popleft()
-        if (row, col) in visited:
+        row, col, parent_row, parent_col, distance = q.popleft()
+        if (row, col) in parents:
             continue
         if (row, col) not in non_walls:
             continue
-        
+
+        parents[(row, col)] = (parent_row, parent_col)
+        if (row, col) == maze.start:
+            break
+        q.append((row + 1, col, row, col, distance + 1))
+        q.append((row - 1, col, row, col, distance + 1))
+        q.append((row, col + 1, row, col, distance + 1))
+        q.append((row, col - 1, row, col, distance + 1))
+    
+    row, col = maze.start
+    while (row, col) != maze.exit:
+        row, col = parents[(row, col)]
         result[row][col] = distance
-        q.append((row + 1, col, distance + 1))
-        q.append((row - 1, col, distance + 1))
-        q.append((row, col + 1, distance + 1))
-        q.append((row, col - 1, distance + 1))
-        visited.add((row, col))
+        distance -= 1
+
     return result
+
     
 
 
@@ -325,33 +334,35 @@ def value_iteration(prev_mazes, learning_rate=.5):
     if len(prev_mazes) > 1:
         result = value_iteration(prev_mazes[:-1], learning_rate)
     
-    distances = get_distances_to_exit(prev_mazes[-1])
+    distances = get_distances_to_exit_in_optimal_path(prev_mazes[-1])
     for i in range(nrows):
         for j in range(ncols):
-            result[i][j] = (1 - learning_rate) * result[i][j] + learning_rate * distances[i][j]
+            result[i][j] = (1 - learning_rate) * result[i][j] + learning_rate * -1/(1+distances[i][j])
     return result
 
 
 def get_non_wall_filter(matrix, filter_, position):
     """
-    returns a filter that has zero values for all positions that are walls and all values add to 1.
+    Returns a filter that has zero values for all positions that are walls and all values add to 1.
     """
     nrows = len(matrix)
     ncols = len(matrix[0])
     new_filter_not_normalized = [[0 for _ in range(len(filter_))] for _ in range(len(filter_))]
+
     for i in range(len(filter_)):
         for j in range(len(filter_)):
             row = position[0] - len(filter_) // 2 + i
             col = position[1] - len(filter_) // 2 + j
             if row < 0 or row >= nrows or col < 0 or col >= ncols:
                 continue
-            if matrix[row][col] != float('inf'):
-                new_filter_not_normalized[i][j] = filter_[i][j]
+            new_filter_not_normalized[i][j] = filter_[i][j]
+                
     new_filter = [[0 for _ in range(len(filter_))] for _ in range(len(filter_))]
     new_sum = sum([sum(row) for row in new_filter_not_normalized])
     for i in range(len(filter_)):
         for j in range(len(filter_)):
             new_filter[i][j] = new_filter_not_normalized[i][j] / new_sum
+            
     return new_filter
 
 
@@ -359,7 +370,10 @@ def apply_filter(matrix, filter_, position):
     """
     Apply a filter to a matrix, centered at a given position.
     """
-    filter_ = get_non_wall_filter(matrix, filter_, position)
+    try:
+        filter_ = get_non_wall_filter(matrix, filter_, position)
+    except:
+        return 0
     nrows = len(matrix)
     ncols = len(matrix[0])
     filter_nrows = len(filter_)
@@ -370,8 +384,6 @@ def apply_filter(matrix, filter_, position):
             row = position[0] + i - filter_nrows // 2
             col = position[1] + j - filter_ncols // 2
             if row < 0 or row >= nrows or col < 0 or col >= ncols:
-                continue
-            if matrix[row][col] == float('inf'):
                 continue
             result += matrix[row][col] * filter_[i][j]
     return result
@@ -384,22 +396,42 @@ def blind_nodevalue_with_memory(child_maze, prev_mazes, discount_factor=1, bad_e
     Q_past = nodevalue based on past maps exits, and current map layout
     Q_mem = weighted average of Q_seen and Q_past
     """
-    Q_blind = blind_nodevalue_comb(child_maze, discount_factor, bad_estimation_factor)
+    def make_node_value(Q):
+        return -1/(1 + Q)
+    
+    Q_blind = blind_nodevalue_comb(child_maze, discount_factor, bad_estimation_factor) # positive slope
+    print("Q_blind", Q_blind)
+    print("Q_blind transformed", make_node_value(Q_blind))
     if len(prev_mazes) == 0:
         return Q_blind
-    if Q_blind == 0:
-        return Q_blind
+    Q_blind = make_node_value(Q_blind) # negative slope
+    
+    
     Q_seen = value_iteration(prev_mazes, learning_rate)
     
     # 5x5 filter for now
     # averages over 5x5 area with more weight on center
-    filter_ = [[.01, .02, .04, .02, .01],
+    filter_1 = [[.01, .02, .04, .02, .01],
                [.02, .04, .08, .04, .02],
                [.04, .08, .16, .08, .04],
                [.02, .04, .08, .04, .02],
                [.01, .02, .04, .02, .01]]
     
-    Q_past = apply_filter(Q_seen, filter_, child_maze.pos)
+    # 3x3 filter
+    # averages over 3x3 area with more weight on center
+    filter_2 = [[.01, .02, .01],
+                [.02, .04, .02],
+                [.01, .02, .01]]
+    
+    # testing maze 2
+    # if len(prev_mazes) == 1:
+    #     full_Q_past = [[apply_filter(Q_seen, filter_2, (i, j)) for j in range(len(Q_seen[0]))] for i in range(len(Q_seen))]
+    #     visualize_2d_array(full_Q_past)
+    #     raise Exception('testing')
+    
+    if child_maze[child_maze.pos[0]][child_maze.pos[1]] == 3:
+        raise Exception('Child maze at a wall')
+    Q_past = apply_filter(Q_seen, filter_2, child_maze.pos) # positive slope
     
     Q_mem = memory_weight * Q_past + (1 - memory_weight) * Q_blind
     return Q_mem    
@@ -444,7 +476,7 @@ class DecisionModel:
     
     def __init__(self, model_name, 
                  node_params=(1,1), parent_params=(1,), 
-                 raw_nodevalue_func=blind_nodevalue_comb, parent_nodeprob_func=softmax):
+                 raw_nodevalue_func=blind_nodevalue_comb, parent_nodeprob_func=softmax_complement):
         
         """
         model_name: str
@@ -550,7 +582,8 @@ class DecisionModel:
             # testing
             for pre_choice in probs_summary:
                 if maze.map[pre_choice.pos[0]][pre_choice.pos[1]] == 3:
-                    print("Error: we're in a wall")
+                    raise Exception("We're in a wall!")
+                
         return result
     
 
@@ -562,9 +595,9 @@ class DecisionModelRange(DecisionModel):
     
     def __init__(self, model_name, 
                  node_params_ranges, parent_params_ranges, evaluation_function,
-                 raw_nodevalue_func=blind_nodevalue_comb, parent_nodeprob_func=softmax,):
+                 raw_nodevalue_func=blind_nodevalue_comb, parent_nodeprob_func=softmax_complement,):
         
-        super().__init__(self, model_name, raw_nodevalue_func=blind_nodevalue_comb, parent_nodeprob_func=softmax)
+        super().__init__(self, model_name, raw_nodevalue_func=blind_nodevalue_comb, parent_nodeprob_func=softmax_complement)
         #Preserve usual DecisionModel stuff
         
         
@@ -678,9 +711,14 @@ class DecisionModelRange(DecisionModel):
         return models[best_index]
             
 
+def visualize_2d_array(arr) -> None:
+    plt.show()
+    plt.imshow(arr, cmap='seismic')
+    plt.colorbar()
+    plt.show()
+
 if __name__ == '__main__':
     Maze1 = mazes['1']
     node_params = (1, 1, .5, .5)
     model = DecisionModel("memory", node_params=node_params, raw_nodevalue_func=blind_nodevalue_with_memory)
     vals = model.choice_probs([Maze1, Maze1])
-    print(vals)
