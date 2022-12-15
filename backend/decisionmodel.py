@@ -120,9 +120,12 @@ def softmax_complement(values, tau):
     list
         Returns the output of a softmax over our values.
     """
-    numer = [np.exp(v * ( 1 /tau)) for v in values]
+    numer = [np.exp(v * ( 1 /tau)) if v != float('inf') else 0 for v in values]
     denom = sum(numer)
-    return [ 1-n /denom for n in numer]
+    try:
+        return [ 1-n /denom for n in numer]
+    except:
+        print(numer)
 
 
 # probability weighting function: convert probability p to weight
@@ -239,7 +242,6 @@ def blind_nodevalue_comb(maze, prev_mazes=None, gamma=1, beta=1):
         This does not take softmax into account.
 
     """
-        
     graph = graphs[maze.name]
     
     parent_node = maze
@@ -280,19 +282,19 @@ def blind_nodevalue_comb(maze, prev_mazes=None, gamma=1, beta=1):
     return true_loss
 
 
-def get_distances_to_exit_in_optimal_path(maze):
+def get_distances_to_exit_in_optimal_path(maze, exit_):
     """
     Get the distance from each node in the optimal path to the exit.
     """
     nrows = maze.nrows
     ncols = maze.ncols
     result = [[float('inf') for _ in range(ncols)] for _ in range(nrows)]
-    result[maze.exit[0]][maze.exit[1]] = 0
+    result[exit_[0]][exit_[1]] = 0
     non_walls = set(maze.black) | set(maze.path) | set([maze.exit]) | set([maze.start])
     
     # bfs
     q = deque() # (row, col, parent_row, parent_col, distance)
-    q.append((maze.exit[0], maze.exit[1], None, None, 0))
+    q.append((exit_[0], exit_[1], None, None, 0))
     parents = {}
     while q:
         row, col, parent_row, parent_col, distance = q.popleft()
@@ -310,83 +312,92 @@ def get_distances_to_exit_in_optimal_path(maze):
         q.append((row, col - 1, row, col, distance + 1))
     
     row, col = maze.start
-    while (row, col) != maze.exit:
+    while (row, col) != exit_:
         row, col = parents[(row, col)]
         result[row][col] = distance
         distance -= 1
 
     return result
 
-    
-
 
 @memoize
-def value_iteration(prev_mazes, learning_rate=.5):
+def distance_to_exit(maze, point):
     """
-    For each maze, calculate the value of each node based on the position of the exit.
-    Calculated as min distance to exit from each node.
-    Essentially "seen_nodevalue_comb"
-    Returns matrix of values for each node.
+    Get the distance from a point to the exit using bfs.
     """
-    nrows = prev_mazes[0].nrows
-    ncols = prev_mazes[0].ncols
-    result = [[0 for _ in range(nrows)] for _ in range(ncols)]
-    if len(prev_mazes) > 1:
-        result = value_iteration(prev_mazes[:-1], learning_rate)
+    non_walls = set(maze.black) | set(maze.path) | set([maze.exit]) | set([maze.start])
+    q = deque() # (row, col, distance)
+    q.append((point[0], point[1], 0))
+    while q:
+        row, col, distance = q.popleft()
+        if (row, col) == maze.exit:
+            return distance
+        if (row, col) not in non_walls:
+            continue
+        non_walls.remove((row, col))
+        q.append((row + 1, col, distance + 1))
+        q.append((row - 1, col, distance + 1))
+        q.append((row, col + 1, distance + 1))
+        q.append((row, col - 1, distance + 1))
+    return float('inf')    
+
+
+def weighted_distance_to_previous_exits(current_maze, prev_mazes, learning_rate=.5, weights=None):
+    """
+    For each previous maze, calculate the value of each position on the current maze's path
+    based on the position of the exit in the previous maze. The value is the distance to the exit.
+    If the exit is not in the current maze, the value is the distance to the closest point to the exit
+    plus the distance from that point to the exit.
+    """
+    if not weights:
+        weights = {}
     
-    distances = get_distances_to_exit_in_optimal_path(prev_mazes[-1])
-    for i in range(nrows):
-        for j in range(ncols):
-            result[i][j] = (1 - learning_rate) * result[i][j] + learning_rate * -1/(1+distances[i][j])
+    # Base case: If there are no more previous mazes, return the weights
+    if not prev_mazes:
+        return weights
+    
+    # Update the weights using the learning rate
+    updated_weights = {}
+    for p in weights:
+        updated_weights[p] = weights[p] * learning_rate
+    weights = updated_weights
+    
+    non_walls = set(current_maze.black) | set(current_maze.path) | set([current_maze.start])
+    if current_maze.exit is not None:
+        non_walls |= set([current_maze.exit])
+    
+    prev_maze = prev_mazes[0]
+    # if the exit can be seen in the current maze, return 0
+    # if current_maze.exit is None:
+    #     return 0
+    
+    if prev_maze.exit in non_walls:
+        # If the exit is in the current maze, the value is the distance to the exit
+        distances = get_distances_to_exit_in_optimal_path(current_maze, prev_maze.exit)
+        for p in non_walls:
+            weights[p] = distances[p[0]][p[1]]
+    else:
+        # If the exit is not in the current maze, the value is the distance to the closest point
+        # to the exit plus the distance from that point to the exit
+        closest_point = min(non_walls, key=lambda p: distance_to_exit(prev_maze, p))
+        distances = get_distances_to_exit_in_optimal_path(current_maze, closest_point)
+        distance_from_closest_point_to_exit = abs(closest_point[0] - prev_maze.exit[0]) + abs(closest_point[1] - prev_maze.exit[1])
+        for p in non_walls:
+            weights[p] = distances[p[0]][p[1]] + distance_from_closest_point_to_exit
+    
+    # Recursively call the function on the remaining previous mazes
+    return weighted_distance_to_previous_exits(current_maze, prev_mazes[1:], learning_rate, weights)
+
+
+def dictionary_to_matrix(dictionary, nrows, ncols):
+    """
+    Convert a dictionary of (row, col) to value to a matrix.
+    """
+    result = [[float('inf') for _ in range(ncols)] for _ in range(nrows)]
+    for (row, col), value in dictionary.items():
+        result[row][col] = value
     return result
 
-
-def get_non_wall_filter(matrix, filter_, position):
-    """
-    Returns a filter that has zero values for all positions that are walls and all values add to 1.
-    """
-    nrows = len(matrix)
-    ncols = len(matrix[0])
-    new_filter_not_normalized = [[0 for _ in range(len(filter_))] for _ in range(len(filter_))]
-
-    for i in range(len(filter_)):
-        for j in range(len(filter_)):
-            row = position[0] - len(filter_) // 2 + i
-            col = position[1] - len(filter_) // 2 + j
-            if row < 0 or row >= nrows or col < 0 or col >= ncols:
-                continue
-            new_filter_not_normalized[i][j] = filter_[i][j]
-                
-    new_filter = [[0 for _ in range(len(filter_))] for _ in range(len(filter_))]
-    new_sum = sum([sum(row) for row in new_filter_not_normalized])
-    for i in range(len(filter_)):
-        for j in range(len(filter_)):
-            new_filter[i][j] = new_filter_not_normalized[i][j] / new_sum
-            
-    return new_filter
-
-
-def apply_filter(matrix, filter_, position):
-    """
-    Apply a filter to a matrix, centered at a given position.
-    """
-    try:
-        filter_ = get_non_wall_filter(matrix, filter_, position)
-    except:
-        return 0
-    nrows = len(matrix)
-    ncols = len(matrix[0])
-    filter_nrows = len(filter_)
-    filter_ncols = len(filter_[0])
-    result = 0
-    for i in range(filter_nrows):
-        for j in range(filter_ncols):
-            row = position[0] + i - filter_nrows // 2
-            col = position[1] + j - filter_ncols // 2
-            if row < 0 or row >= nrows or col < 0 or col >= ncols:
-                continue
-            result += matrix[row][col] * filter_[i][j]
-    return result
 
 @memoize #Hopefully saves on time cost to compute?
 def blind_nodevalue_with_memory(child_maze, prev_mazes, discount_factor=1, bad_estimation_factor=1, memory_weight=.5, learning_rate=.5):
@@ -396,44 +407,24 @@ def blind_nodevalue_with_memory(child_maze, prev_mazes, discount_factor=1, bad_e
     Q_past = nodevalue based on past maps exits, and current map layout
     Q_mem = weighted average of Q_seen and Q_past
     """
-    def make_node_value(Q):
-        return -1/(1 + Q)
-    
     Q_blind = blind_nodevalue_comb(child_maze, discount_factor, bad_estimation_factor) # positive slope
-    print("Q_blind", Q_blind)
-    print("Q_blind transformed", make_node_value(Q_blind))
+
     if len(prev_mazes) == 0:
         return Q_blind
-    Q_blind = make_node_value(Q_blind) # negative slope
+
+    Q_past_all = weighted_distance_to_previous_exits(child_maze, prev_mazes, learning_rate)
+    # if child_maze.pos == (8,11) and len(prev_mazes) == 4:
+    #     visualize_2d_array(dictionary_to_matrix(Q_past_all, child_maze.nrows, child_maze.ncols))
+    Q_past = Q_past_all[child_maze.pos]
     
+    if memory_weight == 0 and Q_past == float('inf'):
+        return (1 - memory_weight) * Q_blind
     
-    Q_seen = value_iteration(prev_mazes, learning_rate)
-    
-    # 5x5 filter for now
-    # averages over 5x5 area with more weight on center
-    filter_1 = [[.01, .02, .04, .02, .01],
-               [.02, .04, .08, .04, .02],
-               [.04, .08, .16, .08, .04],
-               [.02, .04, .08, .04, .02],
-               [.01, .02, .04, .02, .01]]
-    
-    # 3x3 filter
-    # averages over 3x3 area with more weight on center
-    filter_2 = [[.01, .02, .01],
-                [.02, .04, .02],
-                [.01, .02, .01]]
-    
-    # testing maze 2
-    # if len(prev_mazes) == 1:
-    #     full_Q_past = [[apply_filter(Q_seen, filter_2, (i, j)) for j in range(len(Q_seen[0]))] for i in range(len(Q_seen))]
-    #     visualize_2d_array(full_Q_past)
-    #     raise Exception('testing')
-    
-    if child_maze[child_maze.pos[0]][child_maze.pos[1]] == 3:
-        raise Exception('Child maze at a wall')
-    Q_past = apply_filter(Q_seen, filter_2, child_maze.pos) # positive slope
+    if Q_past == float('inf'):
+        return Q_blind
     
     Q_mem = memory_weight * Q_past + (1 - memory_weight) * Q_blind
+
     return Q_mem    
   
 
@@ -573,6 +564,8 @@ class DecisionModel:
                     #Average value of this child: average distance to exit
                     child_to_exit_all = self.raw_nodevalue_func(child_maze, prev_mazes, *self.node_params) 
                     value = parent_to_child + child_to_exit_all
+                    # if math.isnan(value):
+                    #     raise Exception("Value is NaN!")
                     raw_values.append(value)
                 
                 #Apply whatever function you want to these raw values
