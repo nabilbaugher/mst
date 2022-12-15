@@ -638,7 +638,9 @@ class Maze:
         ax.set_xticklabels([str(i) for i in range(self.ncols)])
         ax.set_yticklabels([str(i) for i in range(self.nrows)])
 
-
+        # add a title
+        ax.set(title='Maze ' + self.name)
+        
         if pos:
             (r,c)=pos
             
