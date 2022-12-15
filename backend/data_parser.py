@@ -250,7 +250,7 @@ def decisions_to_subject_decisions(decisions):
 
 
 if __name__ == "__main__":
-    file = get_csv('trials_rows')
+    file = get_csv("./data/prolific_data_sorted_tester_id_created_at")
     
     u,d,l,r = 'up', 'down', 'left', 'right'
     
@@ -263,20 +263,22 @@ if __name__ == "__main__":
     
     subject_decisions = decisions_to_subject_decisions(decisions)
     
-    Maze1 = mazes['1']
+    i = '19'
+
+    tid = '0e9aebe0-7972-11ed-9421-5535258a0716'
     
-    # m = decisions['02a063a0-768f-11ed-9574-33a31f13e24c']
+    m = decisions[tid]
     
-    # n = m['1']
+    n = m[i]
     
-    # ex_decisions = subject_decisions['02a063a0-768f-11ed-9574-33a31f13e24c']
+    ex_decisions = subject_decisions[tid]
     
-    # maze = Maze1
+    maze = mazes[i]
     
-    # for s in n['path']:
-    #     maze = maze.update_map(pos=s)
-    #     print(s)
-    #     if s in n['node_changes']:
-    #         print("Bazinga uwu") #New node!
+    for s in n['path']:
+        maze = maze.update_map(pos=s)
+        print(s)
+        if s in n['node_changes']:
+            print("Bazinga uwu") #New node!
         
-    #     maze.visualize(s)
+        maze.visualize(pos=s)
