@@ -7,3 +7,8 @@
 # Average total number of steps for each maze for humans
 # Average total number of steps for each maze for models
 
+# Cool things to do:
+# Track backtracking - did they do "left" then "right"
+# See how similar human traversals are to each other
+
+# 
