@@ -3,15 +3,18 @@ import numpy as np
 import pprint
 import matplotlib.pyplot as plt
 import random
-
+import pandas as pd
+import csv
 
 #Maze representation
 from maze import Maze, maze2tree_defunct, grid2maze
 from test_mazes import graphs, mazes
 #Models of human decision-making
-from decisionmodel import DecisionModel, DecisionModelRange, blind_nodevalue_comb, softmax_complement
+from decisionmodel import DecisionModel, DecisionModelRange, blind_nodevalue_comb, softmax_complement, blind_nodevalue_with_memory
 #Converting data into our desired formats.
-from data_parser import directions, decisions_to_subject_decisions
+from data_parser import directions, decisions_to_subject_decisions, convert_data, get_csv
+from avg_log_likelihood import avg_log_likelihood_decisions
+
 
 pp = pprint.PrettyPrinter(compact=False, width=90)
 
@@ -50,69 +53,6 @@ Reminder of the params typical format
     parent_params_comb = ('tau',)
     node_params_comb = ('gamma','beta')
 """
-
-
-def avg_log_likelihood_decisions(decisions_list,  model ):
-    ###NEEDS REWRITING
-    """
-    Helps compute how likely these of decisions would have been, assuming our decisions were guided
-    by our model and params (higher value -> higher likelihood of decision)
-    
-    Represents this as the log likelihood. Averaging this over all of our decisions
-
-    Parameters
-    ----------
-    decisions_list : list of tuples (Maze, Maze)
-        Each tuple represents one decision our player made, moving between two nodes: (parent_maze, child_maze)
-        To reach this node, our player has to have gone from its parent node, and chosen this option.
-        
-        This list in total represents every decision our player made.
-        
-    model : DecisionModel object, representing one model for player-decisions. 
-        Contains variables-
-    
-             model_name: str
-                Contains the name of this model. Usually, the model class it is stored in.
-                
-             node_params: tuple of floats.
-                 Contains the parameters for calculating the raw value of one node.
-                 
-             parent_params: tuple of floats.
-                 Contains the parameters we need for calculating the probability of each child node, using values.
-                 
-            raw_nodevalue_func : function, optional
-                A function that computes the value of a single node.
-                Inputs are (maze, node, *params)
-                
-            parent_nodeprob_func : function, optional
-                A function that computes the probability for each of our nodes.
-                Inputs are (values, *params)
-                
-        Fully describes a single model for player action.
-    
-
-    Returns
-    -------
-    avg_loglike: float
-        The average log likelihood of this set of decision, given our model and parameters.
-
-    """
-    cum_loglike = 0
-    for parent_node, child_node in decisions_list: #Every decision this subject has made
-        graph = graphs[parent_node.name] #Graph for this node
-        choices = graph[parent_node]['children'] #All choices we could have made at the last step
-        
-        #Get the probability for each choice the parent node had
-        choices = model.choice_probs(parent_node)[parent_node]
-        
-        #We only chose the current child node
-        cum_loglike += np.log( choices[child_node] ) 
-    
-    avg_loglike = cum_loglike / len(decisions_list)
-    return avg_loglike
-
-
-
 
 
 ###Handle Cross-Validations
@@ -184,28 +124,9 @@ def split_train_test_rand(decisions_list, k=4):
 
 
 
-
-
-
-#Models example
-expected_utility_model = DecisionModel(model_name="Expected_Utility")
-discounted_utility_model = DecisionModel(model_name="Discounted_Utility")
-probability_weighted_model = DecisionModel(model_name="Probability_Weighted")
-
-
-eu_du_pwu = [expected_utility_model, discounted_utility_model, probability_weighted_model]
-
-eu_model_class = DecisionModelRange(model_name= 'Expected_Utility',
-                                    evaluation_function = avg_log_likelihood_decisions,
-                                    raw_nodevalue_func = blind_nodevalue_comb,
-                                    parent_nodeprob_func = softmax_complement,
-                                    node_params_ranges   = ((0,1,10), (0,1,10)),
-                                    parent_params_ranges = ((0,1,10),)
-                                    )
-
 def model_preference(model_classes, decisions, k=4):
     """
-    Takes in several different model classes and evaluates how many subjects prefer each model.
+    Takes in several different model classes (DecisionModelRange objects) and evaluates how many subjects prefer each model.
     
     For each subject, we use cross-evaluation to find which model class fits best: 
     fit parameters using training data, then evaluate with testing.
@@ -220,23 +141,37 @@ def model_preference(model_classes, decisions, k=4):
 
     model_preference = {}  # {model_name: number of subjects that prefer this model}
     subject_decisions = decisions_to_subject_decisions(decisions)
+    a_few_subjects = list(subject_decisions.keys()) #For testing purposes
+    # read in current csv, append new data if it doesn't already exist
+    path = './data/model_preference_more_lr_options.csv'
+    current_data = pd.read_csv(path)
     
-    for subject in decisions:
+    for i, subject in enumerate(a_few_subjects):
         decisions_list = subject_decisions[subject]
         models = {}
         
-        for model_class in model_classes:    
+        print('\nsubject', i+1, '\n')
+        if subject in current_data['subject'].values:
+            print('skipping subject', subject)
+            continue
+        for model_class in model_classes:
+            print('\nmodel:', model_class.model_name, '\n')
             for train, test in split_train_test_rand(decisions_list, k): #Break up data into chunks
-                model = model_class.fit_parameters(train) #Get best model
-                evaluation = avg_log_likelihood_decisions(test, model)
+                model = model_class.fit_parameters(tuple(train)) #Get best model
+                evaluation = avg_log_likelihood_decisions(tuple(test), model)
                 
                 model_name = model.model_name
+                model_params = model.node_params + model.parent_params
                 
-                models[model_name] = evaluation #Save this model and its evaluation
+                models[model_name] = (evaluation, model_params) #Save this model and its evaluation
         
-        preferred_model = max(models, key = lambda model_name: models[model_name]) #Best evaluation!
+        preferred_model = max(models, key = lambda model_name: models[model_name][0]) #Best evaluation!
         
-        model_preference[subject] = preferred_model #Save the best model
+        model_preference[subject] = (preferred_model, models[preferred_model][0], models[preferred_model][1]) #Save the best model
+        with open(path, 'a') as f:
+            writer = csv.writer(f)
+            row_number = len(current_data) + i
+            writer.writerow([row_number, subject, preferred_model, models[preferred_model][1]])
 
     return model_preference
 
@@ -250,9 +185,104 @@ def model_preference(model_classes, decisions, k=4):
 #                                     )
 
 if __name__ == '__main__':
-    pass
-    
+    # Models example
+    # expected_utility_model = DecisionModel(model_name="Expected_Utility")
+    # discounted_utility_model = DecisionModel(model_name="Discounted_Utility")
+    # probability_weighted_model = DecisionModel(model_name="Probability_Weighted")
 
+
+    # Define our model classes
+    # eu_du_pwu = [expected_utility_model, discounted_utility_model, probability_weighted_model]
+
+    # eu_du_pwu_model_class = DecisionModelRange(model_name= 'Expected_Utility',
+    #                                     evaluation_function = avg_log_likelihood_decisions,
+    #                                     raw_nodevalue_func = blind_nodevalue_comb,
+    #                                     parent_nodeprob_func = softmax_complement,
+    #                                     node_params_ranges   = ((0,1,5), (0,1,5)),
+    #                                     parent_params_ranges = ((.2,1.8,5),)
+    #                                 )
+    
+    # comb_memory_model_class = DecisionModelRange(model_name= 'Expected_Utility',
+    #                                     evaluation_function = avg_log_likelihood_decisions,
+    #                                     raw_nodevalue_func = blind_nodevalue_with_memory,
+    #                                     parent_nodeprob_func = softmax_complement,
+    #                                     node_params_ranges   = ((0,1,5), (0,1,5), (0,1,5), (0,1,5)),
+    #                                     parent_params_ranges = ((.2,1.8,5),)
+    #                                 )
+    
+    # testing
+    # param order: beta, gamma
+    expected_utility_model_class = DecisionModelRange(model_name= 'Expected_Utility',
+                                                evaluation_function=avg_log_likelihood_decisions,
+                                                raw_nodevalue_func=blind_nodevalue_comb,
+                                                parent_nodeprob_func=softmax_complement,
+                                                node_params_ranges=((1, 1, 1), (1, 1, 1)),
+                                                parent_params_ranges=((10, 10, 1),)
+                                            )
+    
+    discounted_utility_model_class = DecisionModelRange(model_name= 'Discounted_Utility',
+                                                evaluation_function=avg_log_likelihood_decisions,
+                                                raw_nodevalue_func=blind_nodevalue_comb,
+                                                parent_nodeprob_func=softmax_complement,
+                                                node_params_ranges=((0, 1, 5), (1, 1, 1)),
+                                                parent_params_ranges=((10, 10, 1),)
+                                            )
+
+    probability_weighted_model_class = DecisionModelRange(model_name= 'Probability_Weighted',
+                                                evaluation_function=avg_log_likelihood_decisions,
+                                                raw_nodevalue_func=blind_nodevalue_comb,
+                                                parent_nodeprob_func=softmax_complement,
+                                                node_params_ranges=((1, 1, 1), (.25, 1.25, 3)),
+                                                parent_params_ranges=((10, 10, 1),)
+                                            )
+
+    eu_du_pwu_model_class = DecisionModelRange(model_name= 'Combined_No_Memory',
+                                        evaluation_function = avg_log_likelihood_decisions,
+                                        raw_nodevalue_func = blind_nodevalue_comb,
+                                        parent_nodeprob_func = softmax_complement,
+                                        node_params_ranges   = ((0,1,3), (.5,1.5,3)),
+                                        parent_params_ranges = ((10,10,1),)
+                                    )
+    
+    comb_memory_model_class = DecisionModelRange(model_name= 'Combined_Memory',
+                                        evaluation_function = avg_log_likelihood_decisions,
+                                        raw_nodevalue_func = blind_nodevalue_with_memory,
+                                        parent_nodeprob_func = softmax_complement,
+                                        # node_params_ranges   = ((0,1,3), (.5,1.5,3), (.25,.75,3), (.25,.75,3)),
+                                        node_params_ranges   = ((0,1,3), (.5,1.5,3), (.25,.75,3), (.1,.5,5)),
+                                        parent_params_ranges = ((10,10,1),)
+                                    )
+
+
+    # get subject decisions
+    file = get_csv("./data/prolific_data_sorted_tester_id_created_at")
+    decisions = convert_data(file)
+    # print(decisions.keys())
+    # subject_decisions = decisions_to_subject_decisions(decisions)
+    # print(subject_decisions.keys())
+    # print(subject_decisions['0e9aebe0-7972-11ed-9421-5535258a0716'])
+
+    # get model preferences
+    model_preference = model_preference([comb_memory_model_class], decisions, k=4)
+    # model_preference = model_preference([expected_utility_model_class, discounted_utility_model_class, probability_weighted_model_class, eu_du_pwu_model_class, comb_memory_model_class], decisions, k=4)
+    # model_preference = model_preference([expected_utility_model_class, discounted_utility_model_class], decisions, k=4)
+    
+    print(model_preference)
+    for subject in model_preference:
+        print('subject', subject, 'prefers', model_preference[subject])
+    
+    subjects = list(model_preference.keys())
+    preferred_models = []
+    evaluation = []
+    parameters = []
+    
+    for subject in subjects:
+        preferred_models.append(model_preference[subject][0])
+        evaluation.append(model_preference[subject][1])
+        parameters.append(model_preference[subject][2])
+    dict_for_df = {'subject': subjects, 'preferred_model': preferred_models, 'parameters': parameters}
+    # pd.DataFrame(dict_for_df).to_csv('./data/model_preference_new.csv')
+    pd.DataFrame(dict_for_df).to_csv('./data/model_preference_newer.csv')
     
     
     #Question for Zoe: each subject seems to show up multiple times. 
