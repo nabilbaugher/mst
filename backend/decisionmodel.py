@@ -128,7 +128,7 @@ def softmax_complement(values, tau):
     numer = [np.exp(v * ( 1 /tau)) for v in values]
     denom = sum(numer)
     if len(numer) == 1:
-        return [.5]
+        return [1]
     for n in numer:
         if n == 0:
             raise ValueError("numerator is 0")
@@ -139,7 +139,9 @@ def softmax_complement(values, tau):
             print(tau)
             raise ValueError("numerator is num of numerator")
 
-    return [ 1 - n/denom for n in numer]
+    numer = [ 1 - n/denom for n in numer]
+    denom = sum(numer)
+    return [n/denom for n in numer]
 
 
 
@@ -649,6 +651,8 @@ class DecisionModel:
                 for prob in probs:
                     if prob == 0:
                         raise Exception("We have a zero likelihood!")
+                if sum(probs) > 1.01:
+                    raise Exception("We have a probability greater than 1!")
                 probs_summary[parent_node] = {child_node: prob for child_node,prob in zip(children, probs)}
             result.append(probs_summary)
             # testing

@@ -140,7 +140,7 @@ def model_preference(model_classes, subject_decisions, path, k=4):
     """
 
     model_preference = {}  # {model_name: number of subjects that prefer this model}
-    a_few_subjects = list(subject_decisions.keys()) #For testing purposes
+    a_few_subjects = list(subject_decisions.keys()) # [:3] # For testing purposes
     # read in current csv, append new data if it doesn't already exist
     if path:
         current_data = pd.read_csv(path)
@@ -257,8 +257,8 @@ if __name__ == '__main__':
 
 
     # get subject decisions
-    file = get_csv("./data/prolific_data_sorted_tester_id_created_at")
-    decisions = convert_data(file)
+    file_ = get_csv("./data/prolific_data_sorted_tester_id_created_at")
+    decisions = convert_data(file_)
     # print(decisions.keys())
     # subject_decisions = decisions_to_subject_decisions(decisions)
     # print(subject_decisions.keys())
