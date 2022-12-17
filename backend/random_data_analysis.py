@@ -224,7 +224,7 @@ for arr in all_path_lengths_for_users.values():
 # plt.title('Histogram for human path length across all mazes')
 # plt.show()
 
-    
+
 
 
 # Visualizing the human traversal through the map
