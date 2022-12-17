@@ -4,6 +4,9 @@
 from data_parser import *
 import csv
 import pandas as pd
+import statistics
+import matplotlib.pyplot as plt
+#matplotlib.use('TkAgg')
 
 
 # Things that we want to learn:
@@ -123,9 +126,46 @@ def get_path_lengths_for_all_users(converted_data):
 
     return path_lengths
 
+def get_path_lengths_for_all_mazes(converted_data):
+    """ Given a dictionary given by convert_data(trial_data)
+    Return the path length of all users for all mazes
 
-print("get path lengths")
-all_path_lengths = get_path_lengths_for_all_users(decisions)
+    Input:
+        subject_decisions: dictionary where key is subject, value is a decisions_list
+        decisions_list : list of tuples (Maze, Maze)
+            Each tuple represents one decision our player made, moving between two nodes: (parent_maze, child_maze)
+            To reach this node, our player has to have gone from its parent node, and chosen this option.
+            
+            This list in total represents every decision our player made.
+
+    Output:
+        Dictionary
+
+        Key is maze number, value is an array with all of the n path lengths for n testers
+    """
+
+    path_lengths = {}
+
+    for tester_id in converted_data:
+        #path_lengths[tester_id] = []
+        for maze_number in converted_data[tester_id]:
+            path_length = len(converted_data[tester_id][maze_number]['path'])
+            if maze_number not in path_lengths:
+                path_lengths[maze_number] = []
+            path_lengths[maze_number].append(path_length)
+
+    return path_lengths
+
+
+print("get path lengths for users")
+all_path_lengths_for_users = get_path_lengths_for_all_users(decisions)
+print(all_path_lengths_for_users)
+
+
+print("get path lengths for mazes")
+all_path_lengths_for_mazes = get_path_lengths_for_all_mazes(decisions)
+
+
 
 # Average path length per user
 
@@ -133,12 +173,54 @@ def average(arr):
     return sum(arr) / len(arr)
 
 average_path_length_per_user = []
-for tester_id in all_path_lengths:
-    average_path_length = average(all_path_lengths[tester_id])
+for tester_id in all_path_lengths_for_users:
+    average_path_length = average(all_path_lengths_for_users[tester_id])
     average_path_length_per_user.append(average_path_length)
 
-print("average_path_length_per_user")
+
+average_path_length_per_maze = []
+for maze_number in all_path_lengths_for_mazes:
+    average_path_length = average(all_path_lengths_for_mazes[maze_number])
+    average_path_length_per_maze.append(average_path_length)
+
+# print("average_path_length_per_user")
+# print(average_path_length_per_user)
+
+print("average path length per user")
 print(average_path_length_per_user)
+
+print("average path length per maze")
+print(average_path_length_per_maze)
+
+print("average overall")
+print(average(average_path_length_per_user))
+
+print("stdev overal all users")
+print(statistics.stdev(average_path_length_per_user))
+
+# # Plotting average path length for all mazes sequentially
+x_axis = list(all_path_lengths_for_mazes.keys())
+y_axis = average_path_length_per_maze
+# plt.bar(x_axis, y_axis, color='#BDB5D5')
+# plt.title('Average tester path length for maze number')
+# plt.xlabel('Maze number')
+# plt.ylabel('Average path length')
+# plt.show()
+
+
+# Plotting all path lengths for all mazes as a frequency histogram
+all_path_lengths_overall = []
+
+for arr in all_path_lengths_for_users.values():
+    all_path_lengths_overall = all_path_lengths_overall + arr
+
+
+
+plt.hist(all_path_lengths_overall, 20, histtype = 'bar', edgecolor='black', color='#BDB5D5')
+plt.ylabel('Frequency')
+plt.xlabel('Path length')
+plt.title('Histogram for human path length across all mazes')
+plt.show()
 
     
 
