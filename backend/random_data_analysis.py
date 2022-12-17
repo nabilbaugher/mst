@@ -158,12 +158,12 @@ def get_path_lengths_for_all_mazes(converted_data):
 
 
 # print("get path lengths for users")
-# all_path_lengths_for_users = get_path_lengths_for_all_users(decisions)
+all_path_lengths_for_users = get_path_lengths_for_all_users(decisions)
 # print(all_path_lengths_for_users)
 
 
 # print("get path lengths for mazes")
-# all_path_lengths_for_mazes = get_path_lengths_for_all_mazes(decisions)
+all_path_lengths_for_mazes = get_path_lengths_for_all_mazes(decisions)
 
 
 
