@@ -426,12 +426,6 @@ def weighted_distance_to_previous_exits(current_maze, prev_mazes, learning_rate=
     if not prev_mazes:
         return weights
     
-    # Update the weights using the learning rate
-    updated_weights = {}
-    for p in weights:
-        updated_weights[p] = weights[p] * learning_rate
-    weights = updated_weights
-    
     non_walls = set(current_maze.black) | set(current_maze.path) | set([current_maze.start])
     if current_maze.exit is not None:
         non_walls |= set([current_maze.exit])
@@ -445,7 +439,10 @@ def weighted_distance_to_previous_exits(current_maze, prev_mazes, learning_rate=
         # If the exit is in the current maze, the value is the distance to the exit
         distances = get_distances_to_exit_in_optimal_path(current_maze, prev_maze.exit)
         for p in non_walls:
-            weights[p] = distances[p[0]][p[1]]
+            if p in weights:
+                weights[p] += distances[p[0]][p[1]]
+            else:
+                weights[p] = distances[p[0]][p[1]]
     else:
         # If the exit is not in the current maze, the value is the distance to the closest point
         # to the exit plus the distance from that point to the exit
@@ -453,7 +450,16 @@ def weighted_distance_to_previous_exits(current_maze, prev_mazes, learning_rate=
         distances = get_distances_to_exit_in_optimal_path(current_maze, closest_point)
         distance_from_closest_point_to_exit = abs(closest_point[0] - prev_maze.exit[0]) + abs(closest_point[1] - prev_maze.exit[1])
         for p in non_walls:
-            weights[p] = distances[p[0]][p[1]] + distance_from_closest_point_to_exit
+            if p in weights:
+                weights[p] += distances[p[0]][p[1]] + distance_from_closest_point_to_exit
+            else:
+                weights[p] = distances[p[0]][p[1]] + distance_from_closest_point_to_exit
+
+    # Update the weights using the learning rate
+    updated_weights = {}
+    for p in weights:
+        updated_weights[p] = weights[p] * learning_rate
+    weights = updated_weights
     
     # Recursively call the function on the remaining previous mazes
     return weighted_distance_to_previous_exits(current_maze, prev_mazes[1:], learning_rate, weights)
@@ -636,7 +642,7 @@ class DecisionModel:
                     value = parent_to_child + child_to_exit_all
                     raw_values.append(value)
                     if value > 1000:
-                        raise Exception("infinite expected distance")
+                        raise Exception("infinite expected distance?")
                 
                 #Apply whatever function you want to these raw values
                 probs = self.parent_nodeprob_func(raw_values, *self.parent_params) 

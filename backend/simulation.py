@@ -125,7 +125,7 @@ def visualize_juxtaposed_best_paths(mazes, models, index):
 
 if __name__ == "__main__":
     # Test the visualization
-    memory_model = DecisionModel("memory", node_params=(1, 1, .5, .3), raw_nodevalue_func=blind_nodevalue_with_memory)
-    forget_model = DecisionModel("non memory", node_params=(1, 1), raw_nodevalue_func=blind_nodevalue_comb)
+    memory_model = DecisionModel("memory", node_params=(1, 1, .5, .3), parent_params=(10,), raw_nodevalue_func=blind_nodevalue_with_memory)
+    forget_model = DecisionModel("non memory", node_params=(1, 1), parent_params=(10,), raw_nodevalue_func=blind_nodevalue_comb)
     for i in range(30):
         visualize_juxtaposed_best_paths(mazes, [memory_model, forget_model], i)

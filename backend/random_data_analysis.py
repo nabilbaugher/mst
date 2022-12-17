@@ -91,11 +91,11 @@ decisions = convert_data(trial_data)
 tester_id = '0e9aebe0-7972-11ed-9421-5535258a0716'
 
 
-print("decisions")
-print(decisions)
+# print("decisions")
+# print(decisions)
 
-print("tester_id")
-print(decisions[tester_id]["1"])
+# print("tester_id")
+# print(decisions[tester_id]["1"])
 
 
 def get_path_lengths_for_all_users(converted_data):
@@ -157,13 +157,13 @@ def get_path_lengths_for_all_mazes(converted_data):
     return path_lengths
 
 
-print("get path lengths for users")
-all_path_lengths_for_users = get_path_lengths_for_all_users(decisions)
-print(all_path_lengths_for_users)
+# print("get path lengths for users")
+# all_path_lengths_for_users = get_path_lengths_for_all_users(decisions)
+# print(all_path_lengths_for_users)
 
 
-print("get path lengths for mazes")
-all_path_lengths_for_mazes = get_path_lengths_for_all_mazes(decisions)
+# print("get path lengths for mazes")
+# all_path_lengths_for_mazes = get_path_lengths_for_all_mazes(decisions)
 
 
 
@@ -172,8 +172,10 @@ all_path_lengths_for_mazes = get_path_lengths_for_all_mazes(decisions)
 def average(arr):
     return sum(arr) / len(arr)
 
+total_path_length_per_user = []
 average_path_length_per_user = []
 for tester_id in all_path_lengths_for_users:
+    total_path_length_per_user.append(sum(all_path_lengths_for_users[tester_id]))
     average_path_length = average(all_path_lengths_for_users[tester_id])
     average_path_length_per_user.append(average_path_length)
 
@@ -186,17 +188,17 @@ for maze_number in all_path_lengths_for_mazes:
 # print("average_path_length_per_user")
 # print(average_path_length_per_user)
 
-print("average path length per user")
-print(average_path_length_per_user)
+# print("average path length per user")
+# print(average_path_length_per_user)
 
-print("average path length per maze")
-print(average_path_length_per_maze)
+# print("average path length per maze")
+# print(average_path_length_per_maze)
 
-print("average overall")
-print(average(average_path_length_per_user))
+# print("average overall")
+# print(average(average_path_length_per_user))
 
-print("stdev overal all users")
-print(statistics.stdev(average_path_length_per_user))
+# print("stdev overal all users")
+# print(statistics.stdev(average_path_length_per_user))
 
 # # Plotting average path length for all mazes sequentially
 x_axis = list(all_path_lengths_for_mazes.keys())
@@ -210,17 +212,17 @@ y_axis = average_path_length_per_maze
 
 # Plotting all path lengths for all mazes as a frequency histogram
 all_path_lengths_overall = []
-
 for arr in all_path_lengths_for_users.values():
     all_path_lengths_overall = all_path_lengths_overall + arr
+    
 
 
 
-plt.hist(all_path_lengths_overall, 20, histtype = 'bar', edgecolor='black', color='#BDB5D5')
-plt.ylabel('Frequency')
-plt.xlabel('Path length')
-plt.title('Histogram for human path length across all mazes')
-plt.show()
+# plt.hist(total_path_length_per_user, 20, histtype = 'bar', edgecolor='black', color='#BDB5D5')
+# plt.ylabel('Frequency')
+# plt.xlabel('Path length')
+# plt.title('Histogram for human path length across all mazes')
+# plt.show()
 
     
 
