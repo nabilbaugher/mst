@@ -10,6 +10,10 @@ from maze import Maze, maze2tree_defunct, grid2maze, memoize
 
 from test_mazes import mazes, graphs #maze2graph_dict
 from data_parser import decisions_to_subject_decisions
+from avg_log_likelihood import avg_log_likelihood_decisions
+
+# Circular import so added copy of function to this file
+# from model_evaluation import avg_log_likelihood_decisions 
 
 """
 The goal of this file is to create the DecisionModel and DecisionModelRange classes. Why do we need this classes?
@@ -120,12 +124,23 @@ def softmax_complement(values, tau):
     list
         Returns the output of a softmax over our values.
     """
-    numer = [np.exp(v * ( 1 /tau)) if v != float('inf') else 0 for v in values]
+    # numer = [np.exp(v * ( 1 /tau)) if v != float('inf') else 0 for v in values]
+    numer = [np.exp(v * ( 1 /tau)) for v in values]
     denom = sum(numer)
-    try:
-        return [ 1-n /denom for n in numer]
-    except:
-        print(numer)
+    if len(numer) == 1:
+        return [.5]
+    for n in numer:
+        if n == 0:
+            raise ValueError("numerator is 0")
+    for n in numer:
+        if n == sum(numer):
+            print(len(numer), n, sum(numer))
+            print(values)
+            print(tau)
+            raise ValueError("numerator is num of numerator")
+
+    return [ 1 - n/denom for n in numer]
+
 
 
 # probability weighting function: convert probability p to weight
@@ -198,6 +213,59 @@ def compute_exit_distance(revealed, child_pos):
     dists_to_exit   = np.sum( delta_to_exit, axis=1) #Add x and y coords for manhattan dist
     
     return np.mean(dists_to_exit ) #Average out each exit
+
+
+def random_heuristic(maze, prev_mazes=None, oops=None):
+    return np.random.random()
+
+def steps_cells_heuristic(maze, prev_mazes=None, step_weight=1):
+    """
+    Loss = step_weight * number of steps taken - number of cells revealed
+    """
+    graph = graphs[maze.name]
+    
+    parent_node = maze
+    parent_hidden = maze.get_hidden()
+    
+    child_losses = {} # Values for each child we could choose
+    children = graph[parent_node]["children"] # All children
+
+    for child_maze, path_to_child in children.items():
+        child_hidden = child_maze.get_hidden()
+        num_cells_revealed = len(parent_hidden) - len(child_hidden)
+        num_steps_taken = len(path_to_child)
+        child_losses[child_maze] = step_weight * num_steps_taken - num_cells_revealed
+    
+    if children == {}:
+        return 0
+    
+    true_loss = min(child_losses.values())
+    return true_loss
+
+
+def steps_cells_heuristic_with_memory(maze, prev_mazes, step_weight=1, memory_weight=0.5, learning_rate=0.5):
+    """
+    Loss = memory_weight * Q_memory + (1-memory_weight) * steps_cells_heuristic
+    """
+    Q_steps_cells = steps_cells_heuristic(maze, prev_mazes, step_weight)
+    if len(prev_mazes) == 0:
+        return Q_steps_cells
+
+    Q_past_all = weighted_distance_to_previous_exits(maze, prev_mazes, learning_rate)
+    # if child_maze.pos == (8,11) and len(prev_mazes) == 4:
+    #     visualize_2d_array(dictionary_to_matrix(Q_past_all, child_maze.nrows, child_maze.ncols))
+    Q_past = Q_past_all[maze.pos]
+    
+    if memory_weight == 0 and Q_past == float('inf'):
+        return (1 - memory_weight) * Q_steps_cells
+    
+    if Q_past == float('inf'):
+        return Q_steps_cells
+    
+    Q_mem = memory_weight * Q_past + (1 - memory_weight) * Q_steps_cells
+    if Q_mem == float('inf'):
+        raise Exception("Q_mem is inf")
+    return Q_mem
 
 
 @memoize #Hopefully saves on time cost to compute?
@@ -279,6 +347,8 @@ def blind_nodevalue_comb(maze, prev_mazes=None, gamma=1, beta=1):
         return 0
     
     true_loss = min(child_losses.values()) # We pick the child that incurs the least loss
+    if true_loss == float('inf'):
+        raise ValueError("Infinite loss")
     return true_loss
 
 
@@ -403,7 +473,6 @@ def dictionary_to_matrix(dictionary, nrows, ncols):
 def blind_nodevalue_with_memory(child_maze, prev_mazes, discount_factor=1, bad_estimation_factor=1, memory_weight=.5, learning_rate=.5):
     """
     Q_blind = blind nodevalue no memory
-    Q_seen = matrix of nodevalues based on past maps exits, no info about current map
     Q_past = nodevalue based on past maps exits, and current map layout
     Q_mem = weighted average of Q_seen and Q_past
     """
@@ -424,7 +493,8 @@ def blind_nodevalue_with_memory(child_maze, prev_mazes, discount_factor=1, bad_e
         return Q_blind
     
     Q_mem = memory_weight * Q_past + (1 - memory_weight) * Q_blind
-
+    if Q_mem == float('inf'):
+        raise Exception("Q_mem is inf")
     return Q_mem    
   
 
@@ -564,12 +634,15 @@ class DecisionModel:
                     #Average value of this child: average distance to exit
                     child_to_exit_all = self.raw_nodevalue_func(child_maze, prev_mazes, *self.node_params) 
                     value = parent_to_child + child_to_exit_all
-                    # if math.isnan(value):
-                    #     raise Exception("Value is NaN!")
                     raw_values.append(value)
+                    if value > 1000:
+                        raise Exception("infinite expected distance")
                 
                 #Apply whatever function you want to these raw values
                 probs = self.parent_nodeprob_func(raw_values, *self.parent_params) 
+                for prob in probs:
+                    if prob == 0:
+                        raise Exception("We have a zero likelihood!")
                 probs_summary[parent_node] = {child_node: prob for child_node,prob in zip(children, probs)}
             result.append(probs_summary)
             # testing
@@ -590,7 +663,7 @@ class DecisionModelRange(DecisionModel):
                  node_params_ranges, parent_params_ranges, evaluation_function,
                  raw_nodevalue_func=blind_nodevalue_comb, parent_nodeprob_func=softmax_complement,):
         
-        super().__init__(self, model_name, raw_nodevalue_func=blind_nodevalue_comb, parent_nodeprob_func=softmax_complement)
+        super(DecisionModelRange, self).__init__(model_name, raw_nodevalue_func=raw_nodevalue_func, parent_nodeprob_func=parent_nodeprob_func)
         #Preserve usual DecisionModel stuff
         
         
@@ -675,7 +748,8 @@ class DecisionModelRange(DecisionModel):
                 
         return models
                 
-    def fit_parameters(self, decisions_list):
+    @memoize
+    def fit_parameters(self, decisions_tuple):
         """
         Select the set of parameters that gives this function the best outcome for our evaluation function. 
 
@@ -697,10 +771,12 @@ class DecisionModelRange(DecisionModel):
         performance = {}
         
         for index, model in enumerate(models):
-            evaluation = self.evaluation_function(decisions_list,  model ) #Get model performance
+            print('index:', index+1, 'of', len(models), 'models')
+            # print('model params:', model.node_params, model.parent_params)
+            evaluation = self.evaluation_function(decisions_tuple, model) #Get model performance
             performance[index] = evaluation #Save each value
-            
-        best_index = max( performance, key= performance[index] ) #Find the best model
+            # print('evaluation:', evaluation)
+        best_index = max( performance.keys(), key=lambda index : performance[index] ) #Find the best model
         return models[best_index]
             
 
@@ -709,9 +785,14 @@ def visualize_2d_array(arr) -> None:
     plt.imshow(arr, cmap='seismic')
     plt.colorbar()
     plt.show()
+    
 
 if __name__ == '__main__':
-    Maze1 = mazes['1']
-    node_params = (1, 1, .5, .5)
-    model = DecisionModel("memory", node_params=node_params, raw_nodevalue_func=blind_nodevalue_with_memory)
-    vals = model.choice_probs([Maze1, Maze1])
+    # create DecisionModelRange object with a range of parameters
+    node_params_ranges = [(0, 1, 5), (0, 1, 5), (0, 1, 5), (0, 1, 5)]
+    decision_model_range = DecisionModelRange("memory", node_params_ranges, None, avg_log_likelihood_decisions)
+    
+    # Maze1 = mazes['1']
+    # node_params = (1, 1, .5, .5)
+    # model = DecisionModel("memory", node_params=node_params, raw_nodevalue_func=blind_nodevalue_with_memory)
+    # vals = model.choice_probs([Maze1, Maze1])
