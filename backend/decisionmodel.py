@@ -215,6 +215,59 @@ def compute_exit_distance(revealed, child_pos):
     return np.mean(dists_to_exit ) #Average out each exit
 
 
+def random_heuristic(maze, prev_mazes=None, oops=None):
+    return np.random.random()
+
+def steps_cells_heuristic(maze, prev_mazes=None, step_weight=1):
+    """
+    Loss = step_weight * number of steps taken - number of cells revealed
+    """
+    graph = graphs[maze.name]
+    
+    parent_node = maze
+    parent_hidden = maze.get_hidden()
+    
+    child_losses = {} # Values for each child we could choose
+    children = graph[parent_node]["children"] # All children
+
+    for child_maze, path_to_child in children.items():
+        child_hidden = child_maze.get_hidden()
+        num_cells_revealed = len(parent_hidden) - len(child_hidden)
+        num_steps_taken = len(path_to_child)
+        child_losses[child_maze] = step_weight * num_steps_taken - num_cells_revealed
+    
+    if children == {}:
+        return 0
+    
+    true_loss = min(child_losses.values())
+    return true_loss
+
+
+def steps_cells_heuristic_with_memory(maze, prev_mazes, step_weight=1, memory_weight=0.5, learning_rate=0.5):
+    """
+    Loss = memory_weight * Q_memory + (1-memory_weight) * steps_cells_heuristic
+    """
+    Q_steps_cells = steps_cells_heuristic(maze, prev_mazes, step_weight)
+    if len(prev_mazes) == 0:
+        return Q_steps_cells
+
+    Q_past_all = weighted_distance_to_previous_exits(maze, prev_mazes, learning_rate)
+    # if child_maze.pos == (8,11) and len(prev_mazes) == 4:
+    #     visualize_2d_array(dictionary_to_matrix(Q_past_all, child_maze.nrows, child_maze.ncols))
+    Q_past = Q_past_all[maze.pos]
+    
+    if memory_weight == 0 and Q_past == float('inf'):
+        return (1 - memory_weight) * Q_steps_cells
+    
+    if Q_past == float('inf'):
+        return Q_steps_cells
+    
+    Q_mem = memory_weight * Q_past + (1 - memory_weight) * Q_steps_cells
+    if Q_mem == float('inf'):
+        raise Exception("Q_mem is inf")
+    return Q_mem
+
+
 @memoize #Hopefully saves on time cost to compute?
 def blind_nodevalue_comb(maze, prev_mazes=None, gamma=1, beta=1):
     """

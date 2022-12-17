@@ -10,7 +10,7 @@ import csv
 from maze import Maze, maze2tree_defunct, grid2maze
 from test_mazes import graphs, mazes
 #Models of human decision-making
-from decisionmodel import DecisionModel, DecisionModelRange, blind_nodevalue_comb, softmax_complement, blind_nodevalue_with_memory
+from decisionmodel import DecisionModel, DecisionModelRange, blind_nodevalue_comb, softmax_complement, blind_nodevalue_with_memory, steps_cells_heuristic, steps_cells_heuristic_with_memory
 #Converting data into our desired formats.
 from data_parser import directions, decisions_to_subject_decisions, convert_data, get_csv
 from avg_log_likelihood import avg_log_likelihood_decisions
@@ -124,7 +124,7 @@ def split_train_test_rand(decisions_list, k=4):
 
 
 
-def model_preference(model_classes, decisions, k=4):
+def model_preference(model_classes, subject_decisions, path, k=4):
     """
     Takes in several different model classes (DecisionModelRange objects) and evaluates how many subjects prefer each model.
     
@@ -140,18 +140,19 @@ def model_preference(model_classes, decisions, k=4):
     """
 
     model_preference = {}  # {model_name: number of subjects that prefer this model}
-    subject_decisions = decisions_to_subject_decisions(decisions)
     a_few_subjects = list(subject_decisions.keys()) #For testing purposes
     # read in current csv, append new data if it doesn't already exist
-    path = './data/model_preference_more_lr_options.csv'
-    current_data = pd.read_csv(path)
+    if path:
+        current_data = pd.read_csv(path)
+    else:
+        current_data = {}
     
     for i, subject in enumerate(a_few_subjects):
         decisions_list = subject_decisions[subject]
         models = {}
         
         print('\nsubject', i+1, '\n')
-        if subject in current_data['subject'].values:
+        if path and subject in current_data['subject'].values:
             print('skipping subject', subject)
             continue
         for model_class in model_classes:
@@ -168,10 +169,11 @@ def model_preference(model_classes, decisions, k=4):
         preferred_model = max(models, key = lambda model_name: models[model_name][0]) #Best evaluation!
         
         model_preference[subject] = (preferred_model, models[preferred_model][0], models[preferred_model][1]) #Save the best model
-        with open(path, 'a') as f:
-            writer = csv.writer(f)
-            row_number = len(current_data) + i
-            writer.writerow([row_number, subject, preferred_model, models[preferred_model][1]])
+        if path is not None:
+            with open(path, 'a') as f:
+                writer = csv.writer(f)
+                row_number = len(current_data) + i
+                writer.writerow([row_number, subject, preferred_model, models[preferred_model][1]])
 
     return model_preference
 
@@ -263,7 +265,8 @@ if __name__ == '__main__':
     # print(subject_decisions['0e9aebe0-7972-11ed-9421-5535258a0716'])
 
     # get model preferences
-    model_preference = model_preference([comb_memory_model_class], decisions, k=4)
+    subject_decisions = decisions_to_subject_decisions(decisions)
+    model_preference = model_preference([comb_memory_model_class], subject_decisions, './data/model_preference_more_lr_options.csv', k=4)
     # model_preference = model_preference([expected_utility_model_class, discounted_utility_model_class, probability_weighted_model_class, eu_du_pwu_model_class, comb_memory_model_class], decisions, k=4)
     # model_preference = model_preference([expected_utility_model_class, discounted_utility_model_class], decisions, k=4)
     
