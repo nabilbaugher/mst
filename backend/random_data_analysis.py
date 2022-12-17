@@ -222,7 +222,7 @@ plt.xlabel('Path length')
 plt.title('Histogram for human path length across all mazes')
 plt.show()
 
-    
+
 
 
 # Visualizing the human traversal through the map
