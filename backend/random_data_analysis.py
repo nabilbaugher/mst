@@ -5,8 +5,8 @@ from data_parser import *
 import csv
 import pandas as pd
 import statistics
-import matplotlib
-matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+#matplotlib.use('TkAgg')
 
 
 # Things that we want to learn:
@@ -216,8 +216,11 @@ for arr in all_path_lengths_for_users.values():
 
 
 
-matplotlib.pyplot.hist(all_path_lengths_overall, color='#BDB5D5')
-
+plt.hist(all_path_lengths_overall, 20, histtype = 'bar', edgecolor='black', color='#BDB5D5')
+plt.ylabel('Frequency')
+plt.xlabel('Path length')
+plt.title('Histogram for human path length across all mazes')
+plt.show()
 
     
 
