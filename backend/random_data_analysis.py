@@ -78,7 +78,7 @@ def filter_data_redundant_trials(csv_name):
     trial_data_filtered.to_csv('./data/prolific_data_filtered.csv')
 
 
-filter_data_redundant_trials('./data/prolific_data_sorted_tester_id_created_at.csv')
+# filter_data_redundant_trials('./data/prolific_data_sorted_tester_id_created_at.csv')
 
 
 
