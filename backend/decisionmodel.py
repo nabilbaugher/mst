@@ -802,7 +802,3 @@ if __name__ == '__main__':
     node_params_ranges = [(0, 1, 5), (0, 1, 5), (0, 1, 5), (0, 1, 5)]
     decision_model_range = DecisionModelRange("memory", node_params_ranges, None, avg_log_likelihood_decisions)
     
-    # Maze1 = mazes['1']
-    # node_params = (1, 1, .5, .5)
-    # model = DecisionModel("memory", node_params=node_params, raw_nodevalue_func=blind_nodevalue_with_memory)
-    # vals = model.choice_probs([Maze1, Maze1])
